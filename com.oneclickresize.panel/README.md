@@ -1,6 +1,6 @@
 # 1-Click Resizer — Premiere Pro Panel
 
-**Repo:** https://github.com/tungnguyen1202/1-click-resizer (public)
+**Repo:** https://github.com/snow1202/1-click-resizer (public)
 
 
 A CEP panel that turns the active sequence into the other two aspect ratios of
@@ -59,8 +59,11 @@ version label, commits everything, and pushes to GitHub. Every teammate's panel
 then offers the update on next open.
 
 It also regenerates the README hero image and cuts a matching GitHub release with
-the installer zip. Everything targets `origin` — the repo teammates auto-update
-from.
+the installer zip. Everything targets `origin` = `snow1202/1-click-resizer`, and
+the same commits/tags are also mirrored to the `legacy` remote
+(`tungnguyen1202/1-click-resizer`) so panels installed before the move keep
+auto-updating. Once everyone has re-run the install one-liner, the legacy mirror
+block in `publish.sh` can be deleted.
 
 ## Status indicators
 
@@ -99,7 +102,7 @@ Settings from older versions are migrated automatically on first run.
 Mở **Terminal**, dán và Enter:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/tungnguyen1202/1-click-resizer/main/web-install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/snow1202/1-click-resizer/main/web-install.sh | bash
 ```
 
 Rồi thoát hẳn Premiere (Cmd+Q) → mở lại → **Window → Extensions → 1-Click Resizer**.
@@ -111,7 +114,7 @@ trên Sequoia). Cần `git` (lần đầu macOS mời cài qua `xcode-select --i
 <details>
 <summary>Cách 2 — Bộ cài .app (double-click)</summary>
 
-1. Tải: **https://github.com/tungnguyen1202/1-click-resizer/releases/latest/download/1-Click-Resizer-Installer.zip**
+1. Tải: **https://github.com/snow1202/1-click-resizer/releases/latest/download/1-Click-Resizer-Installer.zip**
 2. Giải nén → **chuột phải** vào **"Cài đặt 1-Click Resizer"** → **Open**.
 3. **macOS 15 Sequoia**: nếu chỉ thấy **"Move to Trash"**, vào **System Settings →
    Privacy & Security** → kéo xuống → **Open Anyway** cạnh tên app → mở lại.
@@ -122,7 +125,7 @@ trên Sequoia). Cần `git` (lần đầu macOS mời cài qua `xcode-select --i
 <summary>Cách 2 — Cài bằng git (cho dev)</summary>
 
 ```bash
-git clone https://github.com/tungnguyen1202/1-click-resizer.git "$HOME/Dev/1-click-resizer" && "$HOME/Dev/1-click-resizer/install.sh"
+git clone https://github.com/snow1202/1-click-resizer.git "$HOME/Dev/1-click-resizer" && "$HOME/Dev/1-click-resizer/install.sh"
 ```
 Rồi thoát hẳn Premiere và mở lại.
 </details>

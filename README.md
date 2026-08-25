@@ -8,12 +8,12 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/tungnguyen1202/1-click-resizer/releases/latest"><img src="https://img.shields.io/github/v/release/tungnguyen1202/1-click-resizer?label=version&color=2ea043" alt="Latest version" /></a>
-  <img src="https://img.shields.io/github/last-commit/tungnguyen1202/1-click-resizer/main?color=2ea043" alt="Last commit" />
+  <a href="https://github.com/snow1202/1-click-resizer/releases/latest"><img src="https://img.shields.io/github/v/release/snow1202/1-click-resizer?label=version&color=2ea043" alt="Latest version" /></a>
+  <img src="https://img.shields.io/github/last-commit/snow1202/1-click-resizer/main?color=2ea043" alt="Last commit" />
 </p>
 
 <p align="center">
-  <a href="https://github.com/tungnguyen1202/1-click-resizer/releases/latest/download/1-Click-Resizer-Installer.zip"><b>⬇️ Download installer (.zip)</b></a>
+  <a href="https://github.com/snow1202/1-click-resizer/releases/latest/download/1-Click-Resizer-Installer.zip"><b>⬇️ Download installer (.zip)</b></a>
   &nbsp;·&nbsp;
   <a href="#-tiếng-việt">🇻🇳 Tiếng Việt</a>
   &nbsp;·&nbsp;
@@ -41,7 +41,7 @@
 Open **Terminal** and paste:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/tungnguyen1202/1-click-resizer/main/web-install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/snow1202/1-click-resizer/main/web-install.sh | bash
 ```
 
 Then quit Premiere fully (Cmd+Q), reopen → **Window → Extensions → 1-Click Resizer**. From then on the panel updates itself — you never reinstall.
@@ -50,7 +50,7 @@ Then quit Premiere fully (Cmd+Q), reopen → **Window → Extensions → 1-Click
 
 <details><summary>Alternative: the .app installer</summary>
 
-1. [Download the installer .zip](https://github.com/tungnguyen1202/1-click-resizer/releases/latest/download/1-Click-Resizer-Installer.zip), unzip, **right-click** “Cài đặt 1-Click Resizer” → **Open**.
+1. [Download the installer .zip](https://github.com/snow1202/1-click-resizer/releases/latest/download/1-Click-Resizer-Installer.zip), unzip, **right-click** “Cài đặt 1-Click Resizer” → **Open**.
 2. **On macOS 15 Sequoia** the right-click trick no longer works — you'll see only **“Move to Trash”**. Fix: **System Settings → Privacy & Security**, scroll down, click **Open Anyway** next to the app's name, then reopen it. (Or just use the Terminal command above — simpler.)
 3. Quit Premiere fully (Cmd+Q), reopen → **Window → Extensions → 1-Click Resizer**.
 </details>
@@ -76,7 +76,7 @@ Then quit Premiere fully (Cmd+Q), reopen → **Window → Extensions → 1-Click
 Mở **Terminal** rồi dán:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/tungnguyen1202/1-click-resizer/main/web-install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/snow1202/1-click-resizer/main/web-install.sh | bash
 ```
 
 Sau đó thoát hẳn Premiere (Cmd+Q), mở lại → **Window → Extensions → 1-Click Resizer**. Từ đó panel tự cập nhật — không bao giờ phải cài lại.
@@ -85,7 +85,7 @@ Sau đó thoát hẳn Premiere (Cmd+Q), mở lại → **Window → Extensions �
 
 <details><summary>Cách khác: bộ cài .app</summary>
 
-1. [Tải bộ cài .zip](https://github.com/tungnguyen1202/1-click-resizer/releases/latest/download/1-Click-Resizer-Installer.zip), giải nén, **chuột phải** vào “Cài đặt 1-Click Resizer” → **Open**.
+1. [Tải bộ cài .zip](https://github.com/snow1202/1-click-resizer/releases/latest/download/1-Click-Resizer-Installer.zip), giải nén, **chuột phải** vào “Cài đặt 1-Click Resizer” → **Open**.
 2. **Trên macOS 15 Sequoia**, mẹo chuột phải không còn tác dụng — bạn sẽ chỉ thấy nút **“Move to Trash”**. Cách xử lý: vào **System Settings → Privacy & Security**, kéo xuống dưới, bấm **Open Anyway** cạnh tên app, rồi mở lại. (Hoặc dùng lệnh Terminal ở trên cho nhanh gọn.)
 3. Thoát hẳn Premiere (Cmd+Q), mở lại → **Window → Extensions → 1-Click Resizer**.
 </details>

@@ -88,22 +88,41 @@ echo "✅ Published v$new and pushed to GitHub."
 # time. The installer embeds a self-updating clone, so rebuilding is cheap
 # insurance; the release just needs to carry the zip so the latest-download URL
 # resolves. Runs AFTER the push, so a release hiccup never blocks the code update.
+REPO_SLUG=$(git remote get-url origin | sed -e 's#.*github.com[:/]##' -e 's#\.git$##')
 if command -v gh >/dev/null 2>&1; then
-  echo "→ Building installer + publishing release v$new …"
+  echo "→ Building installer + publishing release v$new to $REPO_SLUG …"
   if ./build-installer.sh \
-     && gh release create "v$new" "dist/1-Click-Resizer-Installer.zip" \
+     && gh release create "v$new" "dist/1-Click-Resizer-Installer.zip" --repo "$REPO_SLUG" \
           --title "1-Click Resizer v$new" --notes "$msg" --latest; then
     echo "✅ Release v$new published — Releases page + latest-download URL now show v$new."
   else
     echo "⚠️  Code IS pushed, but the GitHub release for v$new did not publish."
     echo "    Finish it manually with:"
-    echo "    ./build-installer.sh && gh release create v$new dist/1-Click-Resizer-Installer.zip --title \"1-Click Resizer v$new\" --notes \"$msg\" --latest"
+    echo "    ./build-installer.sh && gh release create v$new dist/1-Click-Resizer-Installer.zip --repo $REPO_SLUG --title \"1-Click Resizer v$new\" --notes \"$msg\" --latest"
   fi
 else
   echo "⚠️  gh CLI not found — code pushed, but the Releases page was NOT updated."
 fi
 
-# NOTE: publishing targets `origin` (tungnguyen1202/1-click-resizer) only — that
-# is what every teammate's panel auto-updates from. The maintainer mirrors to
-# their personal account by hand when they want to; the `personal` remote is
-# configured for that:  git push personal main && git push personal --tags
+# --- Transition mirror: keep the OLD repo fed ------------------------------------
+# Releases now live on origin = snow1202/1-click-resizer. Panels installed before
+# the move still pull from the previous repo (tungnguyen1202/1-click-resizer), so
+# the same commits and tags are pushed there too — otherwise those installs would
+# silently stop seeing new versions. Drop this block once everyone has re-run the
+# install one-liner and points at the new repo.
+#
+# macOS Keychain holds one github.com credential per host and it belongs to the
+# active account, so the mirror push borrows the other account's token from `gh`
+# through a throwaway credential helper — nothing is written to disk or to config.
+if git remote get-url legacy >/dev/null 2>&1; then
+  echo "→ Mirroring v$new to the legacy repo (pre-move installs) …"
+  if git -c credential.helper='!f(){ test "$1" = get && { echo username=tungnguyen1202; echo "password=$(gh auth token --user tungnguyen1202)"; }; };f' \
+       push legacy main --quiet \
+     && git -c credential.helper='!f(){ test "$1" = get && { echo username=tungnguyen1202; echo "password=$(gh auth token --user tungnguyen1202)"; }; };f' \
+       push legacy --tags --quiet; then
+    echo "✅ Legacy repo mirrored — pre-move installs keep auto-updating."
+  else
+    echo "⚠️  Legacy mirror failed — v$new IS live on $REPO_SLUG, only old installs lag."
+    echo "    Needs a valid gh login for tungnguyen1202 (gh auth status)."
+  fi
+fi

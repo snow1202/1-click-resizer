@@ -8,7 +8,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-REPO_URL="https://github.com/tungnguyen1202/1-click-resizer.git"
+REPO_URL="https://github.com/snow1202/1-click-resizer.git"
 APP_NAME="Cài đặt 1-Click Resizer"
 OUT_DIR="dist"
 PKG_DIR="$OUT_DIR/1-Click Resizer Installer"
@@ -79,7 +79,7 @@ cat > "$PKG_DIR/ĐỌC TRƯỚC KHI CÀI.txt" <<'TXT'
 CÁCH NHANH NHẤT (khuyên dùng) — không gặp lỗi "Move to Trash":
 Mở Terminal, dán 1 lệnh sau rồi Enter:
 
-  curl -fsSL https://raw.githubusercontent.com/tungnguyen1202/1-click-resizer/main/web-install.sh | bash
+  curl -fsSL https://raw.githubusercontent.com/snow1202/1-click-resizer/main/web-install.sh | bash
 
 Rồi thoát hẳn Premiere (Cmd+Q) → mở lại → Window → Extensions → 1-Click Resizer.
 

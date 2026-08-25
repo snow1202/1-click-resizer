@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 1-Click Resizer — cài bằng 1 lệnh Terminal (macOS), KHÔNG cần tải app.
 #
-#   curl -fsSL https://raw.githubusercontent.com/tungnguyen1202/1-click-resizer/main/web-install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/snow1202/1-click-resizer/main/web-install.sh | bash
 #
 # Vì không tải file .app nào về máy, macOS Gatekeeper KHÔNG chặn (không còn lỗi
 # "Move to Trash"). Script clone repo về một chỗ cố định, bật PlayerDebugMode và
@@ -9,7 +9,7 @@
 # lần sau nó tự cập nhật (git pull) thay vì clone lại.
 set -euo pipefail
 
-REPO_URL="https://github.com/tungnguyen1202/1-click-resizer.git"
+REPO_URL="https://github.com/snow1202/1-click-resizer.git"
 BUNDLE="com.oneclickresize.panel"
 DEST="$HOME/Library/Application Support/1-Click Resizer"
 EXT_DIR="$HOME/Library/Application Support/Adobe/CEP/extensions"
