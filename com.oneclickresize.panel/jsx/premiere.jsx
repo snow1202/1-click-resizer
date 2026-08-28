@@ -44,12 +44,27 @@ function RSZ_findProp(comp, name) {
   return null;
 }
 
-// A clip is a graphic (Essential Graphics / MOGRT / title) if any component's
-// display name contains "Graphic". Such clips are never scaled.
+// A clip is a graphic (Essential Graphics: MOGRT, template, or a Type-tool text
+// layer). Their component naming differs per flavour, so check three independent
+// signals — matching only on "Graphic" silently missed every Type-tool text clip:
+//   • MOGRT / template graphics expose a component whose name contains "Graphic".
+//   • A Type-tool text clip names that component after the TEXT ITSELF. Proven
+//     from a real sequence exported as FCP7 XML: the clip carries exactly
+//     "Basic Motion" + "Vector Motion" + <effectid>GraphicAndType</effectid>
+//     whose <name> is the caption text ("For my full-busted ladies out there").
+//     Nothing there contains "Graphic", so "Vector Motion" is the stable marker —
+//     only Essential Graphics clips carry it.
+//   • getMGTComponent() is truthy for both flavours (earlier DOM probe).
+// Such clips are never scaled; they only get their guide Y applied.
 function RSZ_isGraphicClip(clip) {
+  try {
+    if (typeof clip.getMGTComponent === "function" && clip.getMGTComponent()) { return true; }
+  } catch (e) {}
   for (var c = 0; c < clip.components.numItems; c++) {
     var dn = clip.components[c].displayName;
-    if (dn && dn.indexOf("Graphic") !== -1) { return true; }
+    if (!dn) { continue; }
+    if (dn.indexOf("Graphic") !== -1) { return true; }
+    if (dn === "Vector Motion") { return true; }
   }
   return false;
 }

@@ -38,6 +38,11 @@ sequences (e.g. from 9:16 → `… 4x5` and `… 1x1`):
   background can be **Fill frame**-d by hand (one right-click).
 - **Text / graphic / MOGRT**: scale kept; vertical position set to the target
   ratio's guide line (Settings; default centre), horizontal position kept.
+  Graphics are recognised by three signals, because Premiere names their
+  components differently per flavour: a component containing `Graphic` (MOGRT /
+  template), a `Vector Motion` component (Type-tool text layers — their graphic
+  component is named after the text itself, so nothing there says "Graphic"), or
+  a truthy `getMGTComponent()`.
 - **Logo** (clip name contains `logo`, `fav`, …): left exactly as-is — the
   editor positions it by hand. Detected only so it's never mistaken for text
   and snapped to the guide line.

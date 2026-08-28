@@ -37,7 +37,10 @@ function setup() {
   const moves = [];                 // every projectItem.moveBin() call
   let activeSequence = null;
 
-  function makeClip(name, graphic) {
+  // kind: undefined = plain footage | "mogrt" = component named "Graphics"
+  // | "text" = Type-tool text layer, whose graphic component is named after the
+  //   TEXT ITSELF (real Premiere behaviour) leaving "Vector Motion" as the marker.
+  function makeClip(name, kind) {
     const pos = [0.5, 0.5];
     const comps = [{
       displayName: "Motion",
@@ -48,25 +51,39 @@ function setup() {
         { displayName: "Scale", getValue: () => 100, setValue: () => {} }
       ])
     }];
-    if (graphic) { comps.push({ displayName: "Graphics", properties: arrayLike([]) }); }
+    if (kind === "mogrt") {
+      comps.push({ displayName: "Graphics", properties: arrayLike([]) });
+    } else if (kind === "text") {
+      comps.push({ displayName: "Vector Motion", properties: arrayLike([]) });
+      comps.push({ displayName: name, properties: arrayLike([]) });  // named after the text
+    }
     return { name, components: arrayLike(comps), y: () => pos[1] };
   }
 
-  function makeSeq(name, w, h) {
+  // A sequence's clips as data, so clone() can rebuild the SAME shape (the real
+  // clone copies the timeline; the layout pass then runs on the copy, not the
+  // source). Each track is a list of [clipName, kind].
+  const DEFAULT_SPEC = [
+    [["bg footage.mp4", null]],                                        // V1 background
+    [["Text All-In-One", "mogrt"],                                     // V2 overlays
+     ["For my full-busted ladies out there", "text"],
+     ["fav video logo", "mogrt"]]
+  ];
+
+  function makeSeq(name, w, h, spec) {
     const st = { videoFrameWidth: w, videoFrameHeight: h };
+    const shape = spec || DEFAULT_SPEC;
     const seq = {
       name,
       sequenceID: "seq-" + (sequences.length + 1) + "-" + name,
       getSettings: () => ({ ...st }),
       setSettings: (s) => { st.videoFrameWidth = s.videoFrameWidth; st.videoFrameHeight = s.videoFrameHeight; },
-      videoTracks: arrayLike([
-        { clips: arrayLike([makeClip("bg footage.mp4", false)]) },          // V1 background
-        { clips: arrayLike([makeClip("Text All-In-One", true),
-                            makeClip("fav video logo", true)]) }            // V2 overlays
-      ], "numTracks"),
+      videoTracks: arrayLike(
+        shape.map(track => ({ clips: arrayLike(track.map(([n, k]) => makeClip(n, k))) })),
+        "numTracks"),
       // Real clone() returns nothing and drops the copy at the project ROOT.
       clone() {
-        const copy = makeSeq(this.name + " Copy", st.videoFrameWidth, st.videoFrameHeight);
+        const copy = makeSeq(this.name + " Copy", st.videoFrameWidth, st.videoFrameHeight, shape);
         rootChildren.push(copy.projectItem);
       }
     };
@@ -167,9 +184,9 @@ test("layout moves the text/graphic to the guide and leaves logos alone", () => 
   const res = JSON.parse(RSZ_runResizeGG(1, 0.4, 0.30, 0.5));
   const moved45 = res.results.filter(r => r.ratio === "4-5").map(r => r.moved);
   const moved11 = res.results.filter(r => r.ratio === "1-1").map(r => r.moved);
-  // exactly one clip per variant: the graphic. The logo is also a Graphics clip
-  // but must be skipped by name, so a value of 2 would mean logos got moved.
-  assert.deepStrictEqual(moved45, [1, 1, 1]);
+  // Two clips per variant: the MOGRT and the Type-tool text layer. The logo is a
+  // graphic too but must be skipped by name — a 3 here would mean logos moved.
+  assert.deepStrictEqual(moved45, [2, 2, 2]);
   assert.deepStrictEqual(moved11, [0, 0, 0]);
 });
 
@@ -238,4 +255,28 @@ test("no selection and no open sequence reports NO_ACTIVE_SEQUENCE", () => {
   assert.strictEqual(res.error, "NO_ACTIVE_SEQUENCE");
   const pin = JSON.parse(RSZ_runResizePIN(1, 0.5));
   assert.strictEqual(pin.ok, false);
+});
+
+test("Type-tool text layers are detected (component named after the text, not \"Graphic\")", () => {
+  const env = setup();
+  const seq = env.makeSeq("Solo", 1080, 1920);
+  env.rootChildren.push(seq.projectItem);
+  env.select([seq.projectItem]);
+  const res = JSON.parse(RSZ_runResizeGG(1, 0.5, 0.25, 0.5));
+  // V2 holds a MOGRT + a text layer + a logo; only the first two follow the guide.
+  const r45 = res.results.find(r => r.ratio === "4-5");
+  assert.strictEqual(r45.moved, 2);
+});
+
+test("a Type-tool text layer named like a logo is still left alone", () => {
+  const env = setup();
+  // one overlay track holding only a logo-named text layer
+  const seq = env.makeSeq("LogoOnly", 1080, 1920, [
+    [["bg footage.mp4", null]],
+    [["fav video logo", "text"]]
+  ]);
+  env.rootChildren.push(seq.projectItem);
+  env.select([seq.projectItem]);
+  const res = JSON.parse(RSZ_runResizeGG(1, 0.5, 0.25, 0.5));
+  assert.ok(res.results.every(r => r.moved === 0), JSON.stringify(res.results));
 });
