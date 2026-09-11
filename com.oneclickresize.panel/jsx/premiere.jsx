@@ -390,13 +390,34 @@ function RSZ_snapshotJobs(seqs) {
   return jobs;
 }
 
-// GG (Google): for EVERY selected 9:16 / 4:5 / 1:1 sequence, create the OTHER
-// two ratios, naming them "... <ratio> GG". Args: bgTrack; guide9/guide45/guide11
-// = per-ratio text guide Y (0..1, default 0.5). A source whose ratio isn't in the
-// set is reported per-sequence and never aborts the rest of the batch.
-function RSZ_runResizeGG(bgTrack, guide9, guide45, guide11) {
+// Split a comma-separated ratio list ("4-5,1-1") into an array. Empty/blank
+// means "no filter" — every target the platform offers.
+function RSZ_parseList(csv) {
+  var out = [];
+  if (csv === undefined || csv === null) { return out; }
+  var parts = String(csv).split(",");
+  for (var i = 0; i < parts.length; i++) {
+    var t = parts[i];
+    while (t.length && t.charAt(0) === " ") { t = t.substring(1); }
+    while (t.length && t.charAt(t.length - 1) === " ") { t = t.substring(0, t.length - 1); }
+    if (t) { out.push(t); }
+  }
+  return out;
+}
+
+// The one entry point. `platform` is "GG" | "FB" | "PIN"; `wantedCsv` is the
+// ticked ratio list (blank = all of that platform's ratios). Every selected
+// sequence is processed, each with its own ratio, guide and bin; a source whose
+// ratio isn't recognised is reported on its own row instead of aborting the run.
+// PIN is the exception that needs no known source ratio — it always makes 2:3.
+function RSZ_runResize(platform, wantedCsv, bgTrack, guide9, guide45, guide11, guide23) {
   bgTrack = RSZ_normBgTrack(bgTrack);
-  var guideByRatio = { "9-16": RSZ_guideOf(guide9), "4-5": RSZ_guideOf(guide45), "1-1": RSZ_guideOf(guide11) };
+  var guideByRatio = {
+    "9-16": RSZ_guideOf(guide9), "4-5": RSZ_guideOf(guide45),
+    "1-1":  RSZ_guideOf(guide11), "2-3": RSZ_guideOf(guide23)
+  };
+  var wanted = RSZ_parseList(wantedCsv);
+  var needsRatio = (platform !== "PIN");
 
   var src = RSZ_resolveSources();
   if (!src.seqs.length) { return '{"ok":false,"error":"NO_ACTIVE_SEQUENCE",' + RSZ_sourceDiag() + '}'; }
@@ -405,38 +426,33 @@ function RSZ_runResizeGG(bgTrack, guide9, guide45, guide11) {
   var parts = [];
   for (var i = 0; i < jobs.length; i++) {
     var j = jobs[i];
-    if (!j.ratio) {
+    if (needsRatio && !j.ratio) {
       parts.push('{"src":"' + RSZ_esc(j.name) + '","error":"UNKNOWN_RATIO","width":'
                + j.width + ',"height":' + j.height + '}');
       continue;
     }
-    var targets = RSZ.otherRatios(j.ratio);
+    var targets = RSZ.targetsFor(platform, j.ratio, wanted);
+    if (!targets.length) {
+      parts.push('{"src":"' + RSZ_esc(j.name) + '","error":"NO_TARGET_SELECTED"}');
+      continue;
+    }
     for (var t = 0; t < targets.length; t++) {
-      parts.push(RSZ_makeVariant(j.seq, j.name, targets[t], "GG", bgTrack,
+      parts.push(RSZ_makeVariant(j.seq, j.name, targets[t], platform, bgTrack,
                                  guideByRatio[targets[t]], j.bin));
     }
   }
   RSZ_makeActive(jobs[0].seq);
-  return '{"ok":true,"count":' + jobs.length + ',"from":"' + src.from
-       + '","results":[' + parts.join(",") + '],"error":null}';
+  return '{"ok":true,"count":' + jobs.length + ',"platform":"' + platform
+       + '","from":"' + src.from + '","results":[' + parts.join(",") + '],"error":null}';
 }
 
-// PIN (Pinterest): for EVERY selected sequence (any ratio), create a single 2:3
-// sequence named "... 2x3 PIN". Args: bgTrack; guide23 = the 2:3 text guide Y.
+// Thin wrappers — "all targets this platform offers".
+function RSZ_runResizeGG(bgTrack, guide9, guide45, guide11) {
+  return RSZ_runResize("GG", "", bgTrack, guide9, guide45, guide11, 0.5);
+}
+function RSZ_runResizeFB(bgTrack, guide9, guide45) {
+  return RSZ_runResize("FB", "", bgTrack, guide9, guide45, 0.5, 0.5);
+}
 function RSZ_runResizePIN(bgTrack, guide23) {
-  bgTrack = RSZ_normBgTrack(bgTrack);
-  var guideY = RSZ_guideOf(guide23);
-
-  var src = RSZ_resolveSources();
-  if (!src.seqs.length) { return '{"ok":false,"error":"NO_ACTIVE_SEQUENCE",' + RSZ_sourceDiag() + '}'; }
-
-  var jobs = RSZ_snapshotJobs(src.seqs);
-  var parts = [];
-  for (var i = 0; i < jobs.length; i++) {
-    parts.push(RSZ_makeVariant(jobs[i].seq, jobs[i].name, "2-3", "PIN", bgTrack,
-                               guideY, jobs[i].bin));
-  }
-  RSZ_makeActive(jobs[0].seq);
-  return '{"ok":true,"count":' + jobs.length + ',"from":"' + src.from
-       + '","results":[' + parts.join(",") + '],"error":null}';
+  return RSZ_runResize("PIN", "", bgTrack, 0.5, 0.5, 0.5, guide23);
 }

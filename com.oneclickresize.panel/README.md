@@ -3,10 +3,11 @@
 **Repo:** https://github.com/snow1202/1-click-resizer (public)
 
 
-A CEP panel that turns the active sequence into the other two aspect ratios of
-**{9:16, 4:5, 1:1}** with one click: it duplicates the sequence, changes the
-frame size, renames it, fills the background, and places text/graphics on your
-per-ratio guides (logos are left where they are for a manual touch).
+A CEP panel that reframes the sequences you select into the sizes a campaign
+needs — Google (9:16 / 4:5 / 1:1), Facebook (9:16 ⇄ 4:5) or Pinterest (2:3) — in
+one click: it duplicates each sequence, changes the frame size, renames it, keeps
+it in the same bin, and places text/graphics on your per-ratio guides (logos are
+left where they are for a manual touch).
 
 ## Choosing which sequences
 
@@ -20,8 +21,19 @@ name, or `N sequence đã chọn` for a batch.
 
 ## What one click does
 
-From the source sequence, **RESIZE** creates the two remaining ratios as new
-sequences (e.g. from 9:16 → `… 4x5` and `… 1x1`):
+Pick a platform with the toggle above the button, tick the sizes you want, then
+press **RESIZE**:
+
+| Button | Creates | Name suffix |
+|---|---|---|
+| **GG · Google** | the other ratios of 9:16 / 4:5 / 1:1 | `… 4x5 GG` |
+| **FB · Facebook** | 9:16 ⇄ 4:5 only (a 1:1 source offers both) | `… 4x5 FB` |
+| **PIN · Pinterest** | one 2:3 (1080×1620), from any source | `… 2x3 PIN` |
+
+The chips under the toggle are the sizes that run — untick `1:1` and no 1:1
+sequence is made (nothing to delete afterwards). A ratio equal to the source is
+always skipped, so the chips never need to know what you selected. The choice is
+remembered. For each target:
 
 - **Duplicate** the sequence (the original is never modified).
 - **Frame size** set to the target (all 1080 wide: 9:16 = 1080×1920, 4:5 =
@@ -85,8 +97,14 @@ block in `publish.sh` can be deleted.
   1:1 / 2:3 tab (the preview reshapes to that ratio) and drag the green line to
   set where text/graphics/MOGRT sit vertically for that ratio (default centre).
   Their scale is never changed; horizontal position is kept.
+- **Màu giao diện** — the accent colour. Pick from the saturation/brightness
+  field, the hue strip, a preset swatch or by typing a hex value; every border,
+  glow and highlight in the panel is derived from it (`js/theme.js`). The dark
+  background never changes, so contrast stays readable at any hue.
 - Logos (name contains `logo`, `fav`, …) are **left untouched** — position them
   by hand after the resize; no setting needed.
+- Explanatory notes live on **hover** rather than taking up permanent space: any
+  element with a `data-tip` attribute floats a bubble (see `initTips()`).
 - **AUTO** (badge next to ⟳) is realtime detection: the panel polls Premiere
   ~every 0.3s and updates the source info the moment you switch sequences.
   Click it to toggle off (persisted); the **⟳ Refresh** button always works

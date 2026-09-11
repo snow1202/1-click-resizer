@@ -172,6 +172,8 @@
       if (!ok) {
         sub = r.error === "UNKNOWN_RATIO"
           ? "bỏ qua — ratio nguồn không nằm trong 9:16 / 4:5 / 1:1"
+          : r.error === "NO_TARGET_SELECTED"
+          ? "bỏ qua — không còn size nào được tick cho nguồn này"
           : "không tạo được";
         if (r.orphan) { sub += " — bản dở dang: " + r.orphan; }
       }
@@ -202,15 +204,16 @@
     setBusy(true);
     var bg = parseInt(window.RSZ_BG_TRACK, 10) || 1;
     var g = window.RSZ_GUIDE || {};
-    var call;
-    if (window.RSZ_MODE === "PIN") {
-      // Pinterest: one 2:3 output.
-      call = 'RSZ_runResizePIN(' + bg + ',' + gnum(g["2-3"], 0.5) + ')';
-    } else {
-      // Google: the other two of 9:16 / 4:5 / 1:1.
-      var g9 = gnum(g["9-16"], 0.5), g45 = gnum(g["4-5"], 0.5), g11 = gnum(g["1-1"], 0.5);
-      call = 'RSZ_runResizeGG(' + bg + ',' + g9 + ',' + g45 + ',' + g11 + ')';
+    var mode = window.RSZ_MODE;
+    var wanted = tickedTargets(mode);
+    if (!wanted.length) {                       // every box unticked
+      btn.disabled = false; setBusy(false);
+      setStatus("Chưa tick size nào để tạo.");
+      return;
     }
+    var call = 'RSZ_runResize("' + mode + '","' + wanted.join(",") + '",' + bg + ','
+             + gnum(g["9-16"], 0.5) + ',' + gnum(g["4-5"], 0.5) + ','
+             + gnum(g["1-1"], 0.5) + ',' + gnum(g["2-3"], 0.5) + ')';
     setStatus("Đang xử lý…");
     ensureJsx(function () {
       evalAsync(call, function (res) {
@@ -225,29 +228,84 @@
     });
   }
 
-  // Reflect the current mode on the toggle + the RESIZE button's sub-label.
+  // What each button can produce; mirrors RSZ.PLATFORM_TARGETS in the jsx layer.
+  var MODE_TARGETS = { GG: ["9-16", "4-5", "1-1"], FB: ["9-16", "4-5"], PIN: ["2-3"] };
+  var MODE_SUB = {
+    GG: "Google · 9:16 / 4:5 / 1:1",
+    FB: "Facebook · 9:16 / 4:5",
+    PIN: "Pinterest · 2:3"
+  };
+  var CHIP_LABEL = { "9-16": "9:16", "4-5": "4:5", "1-1": "1:1", "2-3": "2:3" };
+
+  // The ratios the user left ticked for this mode. PIN has a single fixed output,
+  // so it ignores the chips entirely.
+  function tickedTargets(mode) {
+    var all = MODE_TARGETS[mode] || [];
+    if (mode === "PIN") { return all.slice(); }
+    var on = window.RSZ_RATIOS || {};
+    var out = [];
+    for (var i = 0; i < all.length; i++) { if (on[all[i]] !== false) { out.push(all[i]); } }
+    return out;
+  }
+
+  // Chips for the current mode. Hidden for PIN (nothing to choose).
+  function renderTargets() {
+    var box = document.getElementById("targets");
+    if (!box) { return; }
+    var mode = window.RSZ_MODE;
+    if (mode === "PIN") { box.style.display = "none"; box.innerHTML = ""; return; }
+    box.style.display = "flex";
+    box.innerHTML = "";
+    var all = MODE_TARGETS[mode] || [];
+    var on = window.RSZ_RATIOS || {};
+    for (var i = 0; i < all.length; i++) {
+      (function (key) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "tchip" + (on[key] !== false ? " on" : "");
+        b.innerHTML = '<span class="tick">✓</span>' + (CHIP_LABEL[key] || key);
+        b.addEventListener("click", function () {
+          window.RSZ_RATIOS[key] = (window.RSZ_RATIOS[key] === false);
+          savePrefs();
+          renderTargets();
+          noteSaved();
+        });
+        box.appendChild(b);
+      })(all[i]);
+    }
+  }
+
+  // Reflect the current mode on the toggle, the chips and the button sub-label.
   function renderMode() {
-    var pin = window.RSZ_MODE === "PIN";
-    var segGG = document.getElementById("mode-gg");
-    var segPIN = document.getElementById("mode-pin");
-    if (segGG) { segGG.className = "seg" + (pin ? "" : " active"); }
-    if (segPIN) { segPIN.className = "seg" + (pin ? " active" : ""); }
+    var mode = window.RSZ_MODE;
+    var ids = { GG: "mode-gg", FB: "mode-fb", PIN: "mode-pin" };
+    for (var k in ids) {
+      if (!ids.hasOwnProperty(k)) { continue; }
+      var el = document.getElementById(ids[k]);
+      if (el) { el.className = "seg" + (k === mode ? " active" : ""); }
+    }
     var sub = document.querySelector("#go .sub");
-    if (sub) { sub.textContent = pin ? "Pinterest · 2:3" : "Google · 9:16 / 4:5 / 1:1"; }
+    if (sub) { sub.textContent = MODE_SUB[mode] || MODE_SUB.GG; }
+    renderTargets();
   }
 
   function setMode(mode) {
-    window.RSZ_MODE = mode === "PIN" ? "PIN" : "GG";
+    window.RSZ_MODE = MODE_TARGETS[mode] ? mode : "GG";
     savePrefs();
     renderMode();
   }
 
   window.initPanel = function () {
     document.getElementById("go").addEventListener("click", run);
-    var segGG = document.getElementById("mode-gg");
-    var segPIN = document.getElementById("mode-pin");
-    if (segGG) { segGG.addEventListener("click", function () { setMode("GG"); }); }
-    if (segPIN) { segPIN.addEventListener("click", function () { setMode("PIN"); }); }
+    var segIds = { GG: "mode-gg", FB: "mode-fb", PIN: "mode-pin" };
+    for (var mk in segIds) {
+      if (!segIds.hasOwnProperty(mk)) { continue; }
+      (function (m) {
+        var el = document.getElementById(segIds[m]);
+        if (el) { el.addEventListener("click", function () { setMode(m); }); }
+      })(mk);
+    }
+    initTips();
     var refreshBtn = document.getElementById("refresh");
     if (refreshBtn) { refreshBtn.addEventListener("click", function () { refreshSource(true); }); }
     var autoBtn = document.getElementById("auto-toggle");
@@ -284,8 +342,17 @@
       "1-1":  gnum(g["1-1"], 0.5),
       "2-3":  gnum(g["2-3"], 0.5)
     };
-    window.RSZ_MODE = s.mode === "PIN" ? "PIN" : "GG";
+    window.RSZ_MODE = (s.mode === "PIN" || s.mode === "FB") ? s.mode : "GG";
     window.RSZ_AUTO = s.auto !== false;   // default: on
+    // Which target ratios stay ticked. Absent = ticked, so a fresh install keeps
+    // the old "make everything" behaviour.
+    var r = s.ratios || {};
+    window.RSZ_RATIOS = {
+      "9-16": r["9-16"] !== false,
+      "4-5":  r["4-5"]  !== false,
+      "1-1":  r["1-1"]  !== false
+    };
+    window.RSZ_ACCENT = (window.RSZ_THEME ? window.RSZ_THEME.apply(s.accent) : (s.accent || null));
     prefsReady = true;
   }
 
@@ -297,7 +364,9 @@
       bgTrack: window.RSZ_BG_TRACK,
       guide: window.RSZ_GUIDE,
       mode: window.RSZ_MODE,
-      auto: !!window.RSZ_AUTO
+      auto: !!window.RSZ_AUTO,
+      ratios: window.RSZ_RATIOS,
+      accent: window.RSZ_ACCENT
     });
   }
 
@@ -306,6 +375,53 @@
   // silently disable every later save.
   loadPrefs();
   window.initPanel();
+
+  // Hover notes: any element carrying data-tip floats a shared bubble instead of
+  // taking up permanent space under the control (the Flex-style behaviour the
+  // editor asked for). Delegated, so chips built at runtime get it for free.
+  var tipEl = null, tipFor = null;
+
+  function hideTip() {
+    if (tipEl) { tipEl.className = "tipbubble"; }
+    tipFor = null;
+  }
+
+  function showTip(el) {
+    var text = el.getAttribute("data-tip");
+    if (!text) { return; }
+    if (!tipEl) {
+      tipEl = document.createElement("div");
+      tipEl.className = "tipbubble";
+      document.body.appendChild(tipEl);
+    }
+    tipFor = el;
+    tipEl.textContent = text;
+    tipEl.className = "tipbubble show";
+    // Measure first, then place: below the control, flipped above when it would
+    // fall off the bottom, and clamped to the panel's width.
+    var r = el.getBoundingClientRect();
+    var b = tipEl.getBoundingClientRect();
+    var top = r.bottom + 6;
+    if (top + b.height > window.innerHeight - 6) { top = r.top - b.height - 6; }
+    var left = r.left + (r.width - b.width) / 2;
+    if (left < 6) { left = 6; }
+    if (left + b.width > window.innerWidth - 6) { left = window.innerWidth - 6 - b.width; }
+    tipEl.style.top = Math.max(6, top) + "px";
+    tipEl.style.left = left + "px";
+  }
+
+  function initTips() {
+    document.addEventListener("mouseover", function (e) {
+      var el = e.target;
+      while (el && el !== document.body && !el.getAttribute) { el = el.parentNode; }
+      while (el && el !== document.body && !el.getAttribute("data-tip")) { el = el.parentNode; }
+      if (el && el.getAttribute && el.getAttribute("data-tip")) {
+        if (el !== tipFor) { showTip(el); }
+      } else { hideTip(); }
+    });
+    document.addEventListener("mouseleave", hideTip);
+    window.addEventListener("blur", hideTip);
+  }
 
   // Settings save silently on change; flash a confirmation so it's obvious the
   // value is now stored for every project (no per-project re-entry).
@@ -421,6 +537,15 @@
         });
       })(tabs[i]);
     }
+    var pick = document.getElementById("accent-picker");
+    if (pick && window.RSZ_THEME) {
+      window.RSZ_THEME.mount(pick, window.RSZ_ACCENT || window.RSZ_THEME.DEFAULT, function (hex) {
+        window.RSZ_ACCENT = window.RSZ_THEME.apply(hex);   // live preview
+        savePrefs();
+        noteSaved();
+      });
+    }
+
     var gy = document.getElementById("guideY");
     if (gy) { gy.addEventListener("change", function () { setGuideY((parseFloat(gy.value) || 0) / 100); }); }
     initGuideDrag();

@@ -25,7 +25,7 @@
             </span>
             1-CLICK RESIZER
           </div>
-          <div class="ver">RSZ-A17F<br><b>V1.9.2</b></div>
+          <div class="ver">RSZ-A17F<br><b>V1.10.0</b></div>
         </div>
 
         <div class="pills">
@@ -53,17 +53,22 @@
 
         <div class="btnwrap">
           <div class="modeseg" role="tablist" aria-label="Chế độ resize">
-            <button type="button" id="mode-gg" class="seg active">GG · Google</button>
-            <button type="button" id="mode-pin" class="seg">PIN · Pinterest</button>
+            <button type="button" id="mode-gg" class="seg active"
+                    data-tip="Google — tạo các ratio còn lại trong 9:16 / 4:5 / 1:1">GG · Google</button>
+            <button type="button" id="mode-fb" class="seg"
+                    data-tip="Facebook — chỉ xoay giữa 9:16 và 4:5">FB · Facebook</button>
+            <button type="button" id="mode-pin" class="seg"
+                    data-tip="Pinterest — tạo đúng 1 bản 2:3 (1080×1620)">PIN · Pinterest</button>
           </div>
-          <button class="resize" id="go">RESIZE
+          <div class="targets" id="targets"
+               data-tip="Tick những size muốn tạo. Ratio trùng với sequence nguồn luôn được bỏ qua."></div>
+          <button class="resize" id="go"
+                  data-tip="Chọn sequence ở Project panel (chọn nhiều cũng được) rồi nhấn RESIZE để sinh các phiên bản.">RESIZE
             <span class="sub">Google · 9:16 / 4:5 / 1:1</span>
           </button>
         </div>
 
-        <div class="outputs" id="outs">
-          <p class="hint">nhấn RESIZE để sinh các phiên bản</p>
-        </div>
+        <div class="outputs" id="outs"></div>
         <div id="status-msg" class="hint" role="status" aria-live="polite"></div>
 
         <div class="foot">
@@ -82,13 +87,12 @@
           <span class="label" style="margin:0">Cài đặt</span>
         </div>
 
-        <div class="srow">
+        <div class="srow" data-tip="Track chứa video nền (mặc định V1). Panel không đụng tới scale của track này.">
           <label class="slabel" for="bgtrack">Track nền (V…)</label>
           <input type="number" id="bgtrack" min="1" max="20" step="1" value="1" aria-label="Background track number" />
         </div>
-        <p class="hint shint">Track chứa video nền (mặc định V1). Chỉ dùng khi đổi sang khung cao hơn.</p>
 
-        <div class="srow">
+        <div class="srow" data-tip="Kéo đường xanh (hoặc gõ %) để đặt vị trí dọc cho text ở ratio đang chọn. Giữ nguyên vị trí ngang & scale. Logo (tên chứa &quot;logo&quot;/&quot;fav&quot;…) luôn được giữ nguyên — bạn tự canh tay.">
           <span class="slabel">Vị trí Text / Graphic / MOGRT</span>
           <div class="gz-tabs">
             <button type="button" class="gz-tab active" data-ratio="9-16">9:16</button>
@@ -108,8 +112,12 @@
             </div>
           </div>
         </div>
-        <p class="hint shint">Kéo đường xanh (hoặc gõ %) để đặt vị trí dọc cho text ở ratio đang chọn. Giữ nguyên vị trí ngang & scale.</p>
-        <p class="hint shint">Logo (tên chứa "logo"/"fav"…) được giữ NGUYÊN vị trí — bạn tự canh tay.</p>
+
+        <div class="srow" data-tip="Đổi tông màu nhấn của panel. Nền tối giữ nguyên để chữ luôn dễ đọc.">
+          <span class="slabel">Màu giao diện</span>
+          <div id="accent-picker"></div>
+        </div>
+
         <p class="hint shint" id="prefs-note">Cài đặt tự lưu 1 lần — dùng cho MỌI project.</p>
 
         <button type="button" id="settings-done" class="sback">Xong</button>
@@ -119,6 +127,7 @@
   </div>
   <script src="js/CSInterface.js"></script>
   <script src="js/prefs.js"></script>
+  <script src="js/theme.js"></script>
   <script src="js/main.js"></script>
   <script src="js/updater.js"></script>
 </body>

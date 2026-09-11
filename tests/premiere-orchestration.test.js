@@ -280,3 +280,46 @@ test("a Type-tool text layer named like a logo is still left alone", () => {
   const res = JSON.parse(RSZ_runResizeGG(1, 0.5, 0.25, 0.5));
   assert.ok(res.results.every(r => r.moved === 0), JSON.stringify(res.results));
 });
+
+test("FB makes one 4:5 from a 9:16 source", () => {
+  const env = setup();
+  const seq = env.makeSeq("Reel", 1080, 1920);
+  env.rootChildren.push(seq.projectItem);
+  env.select([seq.projectItem]);
+  const res = JSON.parse(RSZ_runResize("FB", "", 1, 0.5, 0.5, 0.5, 0.5));
+  assert.strictEqual(res.platform, "FB");
+  assert.strictEqual(res.results.length, 1);
+  assert.strictEqual(res.results[0].name, "Reel 4x5 FB");
+});
+
+test("FB from a 1:1 source offers both 9:16 and 4:5", () => {
+  const env = setup();
+  const seq = env.makeSeq("Square", 1080, 1080);
+  env.rootChildren.push(seq.projectItem);
+  env.select([seq.projectItem]);
+  const res = JSON.parse(RSZ_runResize("FB", "", 1, 0.5, 0.5, 0.5, 0.5));
+  assert.deepStrictEqual(res.results.map(r => r.name), ["Square 9x16 FB", "Square 4x5 FB"]);
+});
+
+test("unticking a size keeps the panel from creating it", () => {
+  const env = setup();
+  const seq = env.makeSeq("Reel", 1080, 1920);
+  env.rootChildren.push(seq.projectItem);
+  env.select([seq.projectItem]);
+  // GG would normally make 4:5 AND 1:1 — ask for 4:5 only
+  const res = JSON.parse(RSZ_runResize("GG", "4-5", 1, 0.5, 0.5, 0.5, 0.5));
+  assert.strictEqual(res.results.length, 1);
+  assert.strictEqual(res.results[0].ratio, "4-5");
+});
+
+test("a source left with no ticked target is reported, not silently skipped", () => {
+  const env = setup();
+  const seq = env.makeSeq("Reel", 1080, 1920);
+  env.rootChildren.push(seq.projectItem);
+  env.select([seq.projectItem]);
+  // only 9:16 ticked, but that IS the source ratio
+  const res = JSON.parse(RSZ_runResize("GG", "9-16", 1, 0.5, 0.5, 0.5, 0.5));
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(res.results.length, 1);
+  assert.strictEqual(res.results[0].error, "NO_TARGET_SELECTED");
+});

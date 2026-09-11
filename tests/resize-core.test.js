@@ -116,3 +116,33 @@ test("clamp01 keeps values in [0,1]", () => {
   assert.strictEqual(RSZ.clamp01(1.4), 1);
   assert.strictEqual(RSZ.clamp01(0.42), 0.42);
 });
+
+test("targetsFor picks a platform's ratios, minus the source, minus unticked", () => {
+  // GG offers all three; the source's own ratio is never re-made
+  assert.deepStrictEqual(RSZ.targetsFor("GG", "9-16"), ["4-5", "1-1"]);
+  assert.deepStrictEqual(RSZ.targetsFor("GG", "1-1"), ["9-16", "4-5"]);
+  // unticking 1:1 leaves just 4:5
+  assert.deepStrictEqual(RSZ.targetsFor("GG", "9-16", ["4-5"]), ["4-5"]);
+  // FB only swaps between 9:16 and 4:5 …
+  assert.deepStrictEqual(RSZ.targetsFor("FB", "9-16"), ["4-5"]);
+  assert.deepStrictEqual(RSZ.targetsFor("FB", "4-5"), ["9-16"]);
+  // … and from a 1:1 source it offers both
+  assert.deepStrictEqual(RSZ.targetsFor("FB", "1-1"), ["9-16", "4-5"]);
+  // PIN is a single fixed output, whatever the source
+  assert.deepStrictEqual(RSZ.targetsFor("PIN", "9-16"), ["2-3"]);
+  assert.deepStrictEqual(RSZ.targetsFor("PIN", null), ["2-3"]);
+  // everything unticked -> nothing to do
+  assert.deepStrictEqual(RSZ.targetsFor("GG", "9-16", ["9-16"]), []);
+  // an unknown platform never invents work
+  assert.deepStrictEqual(RSZ.targetsFor("XX", "9-16"), []);
+});
+
+test("FB joins the platform tags and swaps cleanly with the others", () => {
+  var base = "Brand vid [ed.a]";
+  assert.strictEqual(RSZ.buildName(base, "4-5", "FB"), base + " 4x5 FB");
+  assert.strictEqual(RSZ.buildName(base + " 4x5 FB", "9-16", "GG"), base + " 9x16 GG");
+  assert.strictEqual(RSZ.buildName(base + " 2x3 PIN", "9-16", "FB"), base + " 9x16 FB");
+  assert.strictEqual(RSZ.stripTrailingRatioLabel("Clip 9x16 FB"), "Clip");
+  // a real name merely ending in FB keeps it (no ratio label in front)
+  assert.strictEqual(RSZ.stripTrailingRatioLabel("Highlights FB"), "Highlights FB");
+});

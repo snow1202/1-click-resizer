@@ -16,7 +16,21 @@ var RSZ = (function () {
   // form), so re-resizing a file named either way swaps cleanly.
   var STRIP_SUFFIXES = ["9x16", "4x5", "1x1", "2x3", "9-16", "4-5", "1-1", "2-3"];
   // Platform tags appended after the ratio label, e.g. "... 4x5 GG".
-  var PLATFORM_TAGS = ["GG", "PIN"];
+  var PLATFORM_TAGS = ["GG", "FB", "PIN"];
+  // Which ratios each button may produce. The source's own ratio is always
+  // dropped, so FB from a 1:1 source offers BOTH 9:16 and 4:5, while FB from
+  // 9:16 offers only 4:5.
+  var PLATFORM_TARGETS = {
+    "GG":  ["9-16", "4-5", "1-1"],   // Google
+    "FB":  ["9-16", "4-5"],          // Facebook
+    "PIN": ["2-3"]                   // Pinterest
+  };
+
+  function contains(arr, v) {
+    if (!arr) { return false; }
+    for (var i = 0; i < arr.length; i++) { if (arr[i] === v) { return true; } }
+    return false;
+  }
 
   function aspectOf(w, h) { return w / h; }
 
@@ -61,8 +75,23 @@ var RSZ = (function () {
     return name;
   }
 
+  // The ratios a run should actually create: the platform's set, minus the
+  // source's own ratio, intersected with `wanted` (the ticked boxes). An empty
+  // or missing `wanted` means "everything this platform offers".
+  function targetsFor(platform, sourceRatio, wanted) {
+    var base = PLATFORM_TARGETS[platform] || [];
+    var out = [];
+    for (var i = 0; i < base.length; i++) {
+      var t = base[i];
+      if (t === sourceRatio) { continue; }
+      if (wanted && wanted.length && !contains(wanted, t)) { continue; }
+      out.push(t);
+    }
+    return out;
+  }
+
   // Strip a trailing "<ratio>" or "<ratio> <platform>" label so re-resizing (or
-  // switching GG<->PIN) swaps cleanly. A platform tag (GG/PIN) is only stripped
+  // switching GG/FB/PIN) swaps cleanly. A platform tag (GG/PIN) is only stripped
   // when it sits right after a ratio label — so a real name ending in "GG"/"PIN"
   // (with no ratio before it) is left alone.
   function stripTrailingRatioLabel(name) {
@@ -112,6 +141,9 @@ var RSZ = (function () {
     stripTrailingRatioLabel: stripTrailingRatioLabel,
     buildName: buildName,
     clamp01: clamp01,
+    PLATFORM_TAGS: PLATFORM_TAGS,
+    PLATFORM_TARGETS: PLATFORM_TARGETS,
+    targetsFor: targetsFor,
     LOGO_NAME_HINTS: LOGO_NAME_HINTS,
     isLogoName: isLogoName
   };
