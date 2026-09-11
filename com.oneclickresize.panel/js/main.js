@@ -38,28 +38,45 @@
                     : "Không nói chuyện được với Premiere — thử tắt/bật lại panel";
   }
 
-  // Header pill = selection state. A sequence selected in the Project panel →
-  // green + its name (so you never resize the wrong one). Nothing selected, or
-  // another kind of object clicked → red + "Chưa chọn Sequence".
+  // The pill carries STATE only. The sequence name lives in the heading below it,
+  // where it can wrap and be read in full — a truncated name in a pill was no
+  // use for checking you are about to resize the right thing.
   function paintSequenceState(info) {
     var pill = document.getElementById("pill-seq");
     if (pill) {
-      var selected = !!(info && info.from === "selection");
-      pill.className = selected ? "pill ok" : "pill rec";
+      var from = info ? info.from : "none";
+      var cls = "pill rec", text = "CHƯA CHỌN SEQUENCE",
+          tip = "Hãy click chọn một sequence ở Project panel rồi bấm RESIZE";
+      if (from === "selection") {
+        cls = "pill ok";
+        text = info.count > 1 ? ("ĐÃ CHỌN · " + info.count) : "ĐÃ CHỌN";
+        tip = info.count > 1
+          ? ("Sẽ resize cả " + info.count + " sequence đang chọn")
+          : "Sequence đang chọn ở Project panel";
+      } else if (from === "active") {
+        // Nothing picked, but an open sequence will be used — say so plainly
+        // instead of claiming nothing is selected.
+        cls = "pill wait";
+        text = "ĐANG MỞ";
+        tip = "Chưa chọn gì ở Project panel — sẽ dùng sequence đang mở trên timeline";
+      }
+      pill.className = cls;
       pill.innerHTML = '<span class="dot"></span><span class="pill-label"></span>';
-      var label = pill.querySelector(".pill-label");
-      if (selected && info.count > 1) {
-        // Batch: the Project panel already highlights which ones, so just say
-        // how many will be processed.
-        label.textContent = info.count + " sequence đã chọn";
-        pill.title = "Sẽ resize cả " + info.count + " sequence đang chọn";
-      } else if (selected) {
-        var nm = info.name || "Sequence";
-        label.textContent = nm.length > 26 ? (nm.substring(0, 25) + "…") : nm;
-        pill.title = nm; // full name on hover
+      pill.querySelector(".pill-label").textContent = text;
+      pill.title = tip;
+    }
+
+    // Heading above the source block = the full name of what will be resized.
+    var nameEl = document.getElementById("src-name");
+    if (nameEl) {
+      if (info && info.name) {
+        var nm = info.name;
+        if (info.count > 1) { nm += "  · +" + (info.count - 1) + " sequence nữa"; }
+        nameEl.className = "label name";
+        nameEl.textContent = nm;
       } else {
-        label.textContent = "Chưa chọn Sequence";
-        pill.title = "Hãy click chọn một sequence ở Project panel rồi bấm RESIZE";
+        nameEl.className = "label";
+        nameEl.textContent = "Nguồn nhận diện";
       }
     }
     var rb = document.querySelector(".ratiobox");

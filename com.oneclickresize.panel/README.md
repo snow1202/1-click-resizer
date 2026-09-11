@@ -88,7 +88,11 @@ block in `publish.sh` can be deleted.
 - **ENGINE OK / ENGINE ERR** (header pill): whether the panel can talk to
   Premiere's script engine. Red means the jsx layer isn't responding —
   close and reopen the panel.
-- **SEQUENCE OPEN / NO SEQUENCE** (header pill): whether a sequence is active.
+- **Selection pill** (header): state only — `ĐÃ CHỌN` (green, plus `· N` for a
+  batch), `ĐANG MỞ` (grey: nothing picked, so the open sequence is used) or
+  `CHƯA CHỌN SEQUENCE` (red). The **full sequence name** is the heading above the
+  source block, where it wraps instead of being truncated — that is what you
+  check before resizing.
 - The source block reads **any** sequence, including ratios the panel will never
   resize: `describeRatio()` labels the named sizes (9:16 / 4:5 / 1:1 / 2:3),
   reduces the rest (1920×1080 → `16 : 9`) and approximates awkward ones
