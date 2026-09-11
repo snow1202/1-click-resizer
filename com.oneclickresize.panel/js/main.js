@@ -78,6 +78,7 @@
   // force=true (manual ⟳) always repaints; the realtime poll passes false so
   // an unchanged answer costs nothing and never wipes a visible status message.
   var lastSourceRes = null;
+  var lastSrcRatios = null;
   var sourceInFlight = false;
   function refreshSource(force) {
     // Skip a poll tick if the previous probe hasn't answered yet — keeps the
@@ -100,6 +101,12 @@
           return;
         }
         paintEngine(true);
+        var seen = (info && info.ratios) ? info.ratios.join(",") : "";
+        if (seen !== lastSrcRatios) {
+          lastSrcRatios = seen;
+          window.RSZ_SRC_RATIOS = (info && info.ratios) ? info.ratios : [];
+          renderTargets();          // a chip may have just become redundant
+        }
         if (info) {
           el.querySelector("b").textContent = RATIO_DISPLAY[info.ratio] || "—";
           var sizeTxt = info.width + " × " + info.height;
@@ -206,7 +213,17 @@
     var g = window.RSZ_GUIDE || {};
     var mode = window.RSZ_MODE;
     var wanted = tickedTargets(mode);
-    if (!wanted.length) {                       // every box unticked
+    // Judge "nothing selected" by the chips the user can actually see: a ticked
+    // but hidden ratio only matters to other sequences in a mixed batch.
+    var pickable = visibleTargets(mode);
+    var anyVisibleTicked = false;
+    for (var vi = 0; vi < pickable.length; vi++) {
+      for (var wj = 0; wj < wanted.length; wj++) {
+        if (wanted[wj] === pickable[vi]) { anyVisibleTicked = true; break; }
+      }
+      if (anyVisibleTicked) { break; }
+    }
+    if (!wanted.length || (pickable.length && !anyVisibleTicked)) {
       btn.disabled = false; setBusy(false);
       setStatus("Chưa tick size nào để tạo.");
       return;
@@ -238,7 +255,9 @@
   var CHIP_LABEL = { "9-16": "9:16", "4-5": "4:5", "1-1": "1:1", "2-3": "2:3" };
 
   // The ratios the user left ticked for this mode. PIN has a single fixed output,
-  // so it ignores the chips entirely.
+  // so it ignores the chips entirely. Hidden ratios stay in the list on purpose:
+  // in a mixed batch a ratio that is the source for one sequence is still a
+  // valid target for another, and the jsx drops it per-sequence anyway.
   function tickedTargets(mode) {
     var all = MODE_TARGETS[mode] || [];
     if (mode === "PIN") { return all.slice(); }
@@ -248,15 +267,30 @@
     return out;
   }
 
+  // Offering "9:16" when the selection IS 9:16 is noise, so that chip is hidden —
+  // but only when EVERY selected sequence shares the ratio. With a mixed
+  // selection each ratio is still a real target for the other sequences.
+  function visibleTargets(mode) {
+    var all = MODE_TARGETS[mode] || [];
+    var src = window.RSZ_SRC_RATIOS || [];
+    var out = [];
+    for (var i = 0; i < all.length; i++) {
+      var redundant = src.length === 1 && src[0] === all[i];
+      if (!redundant) { out.push(all[i]); }
+    }
+    return out;
+  }
+
   // Chips for the current mode. Hidden for PIN (nothing to choose).
   function renderTargets() {
     var box = document.getElementById("targets");
     if (!box) { return; }
     var mode = window.RSZ_MODE;
     if (mode === "PIN") { box.style.display = "none"; box.innerHTML = ""; return; }
+    var all = visibleTargets(mode);
+    if (!all.length) { box.style.display = "none"; box.innerHTML = ""; return; }
     box.style.display = "flex";
     box.innerHTML = "";
-    var all = MODE_TARGETS[mode] || [];
     var on = window.RSZ_RATIOS || {};
     for (var i = 0; i < all.length; i++) {
       (function (key) {

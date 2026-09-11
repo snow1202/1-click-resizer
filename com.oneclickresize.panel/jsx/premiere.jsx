@@ -163,15 +163,33 @@ function RSZ_seqGeom(seq) {
   return { w: st.videoFrameWidth, h: st.videoFrameHeight };
 }
 
+// How many sources to measure for `ratios` on each poll. Reading getSettings()
+// per sequence 3×/second is fine for a normal selection; past this we skip the
+// survey (the panel just shows every chip) rather than tax a huge selection.
+var RSZ_RATIO_SURVEY_CAP = 20;
+
 // Internal: the live objects + geometry of the FIRST source (not for
-// evalScript). `count` is how many sequences a run would process.
+// evalScript). `count` is how many sequences a run would process; `ratios` is
+// the distinct set of source ratios, which lets the panel hide a size chip that
+// every selected sequence already is.
 function RSZ_activeInfoObj() {
   var r = RSZ_resolveSources();
   if (!r.seqs.length) { return null; }
   var seq = r.seqs[0];
   var g = RSZ_seqGeom(seq);
+
+  var ratios = [], seen = {};
+  if (r.seqs.length <= RSZ_RATIO_SURVEY_CAP) {
+    for (var i = 0; i < r.seqs.length; i++) {
+      var rr;
+      try { var gg = RSZ_seqGeom(r.seqs[i]); rr = RSZ.detectRatio(gg.w, gg.h); }
+      catch (e) { rr = null; }
+      if (rr && !seen[rr]) { seen[rr] = true; ratios.push(rr); }
+    }
+  }
+
   return { seq: seq, from: r.from, name: seq.name, width: g.w, height: g.h,
-           ratio: RSZ.detectRatio(g.w, g.h), count: r.seqs.length };
+           ratio: RSZ.detectRatio(g.w, g.h), count: r.seqs.length, ratios: ratios };
 }
 
 // Public (evalScript): JSON string for the panel. detectRatio is the single
@@ -180,9 +198,11 @@ function RSZ_activeInfoObj() {
 function RSZ_activeSequenceInfo() {
   var o = RSZ_activeInfoObj();
   if (!o) { return "null"; }
+  var rl = [];
+  for (var i = 0; i < o.ratios.length; i++) { rl.push('"' + o.ratios[i] + '"'); }
   return '{"name":"' + RSZ_esc(o.name) + '","width":' + o.width
        + ',"height":' + o.height + ',"from":"' + o.from + '"'
-       + ',"count":' + o.count
+       + ',"count":' + o.count + ',"ratios":[' + rl.join(",") + ']'
        + ',"ratio":' + (o.ratio ? ('"' + o.ratio + '"') : 'null') + '}';
 }
 

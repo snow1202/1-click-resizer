@@ -31,9 +31,10 @@ press **RESIZE**:
 | **PIN · Pinterest** | one 2:3 (1080×1620), from any source | `… 2x3 PIN` |
 
 The chips under the toggle are the sizes that run — untick `1:1` and no 1:1
-sequence is made (nothing to delete afterwards). A ratio equal to the source is
-always skipped, so the chips never need to know what you selected. The choice is
-remembered. For each target:
+sequence is made (nothing to delete afterwards). The chip for the ratio you are
+already on is hidden, since resizing 9:16 to 9:16 is nothing; with a **mixed**
+selection every chip stays, because a ratio that is the source for one sequence
+is still a real target for another. The choice is remembered. For each target:
 
 - **Duplicate** the sequence (the original is never modified).
 - **Frame size** set to the target (all 1080 wide: 9:16 = 1080×1920, 4:5 =
