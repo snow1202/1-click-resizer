@@ -323,3 +323,28 @@ test("a source left with no ticked target is reported, not silently skipped", ()
   assert.strictEqual(res.results.length, 1);
   assert.strictEqual(res.results[0].error, "NO_TARGET_SELECTED");
 });
+
+test("the probe reports a readable label even for a ratio it cannot resize", () => {
+  const env = setup();
+  const pin = env.makeSeq("Pin board", 1080, 1620);   // 2:3 — a PIN output
+  env.rootChildren.push(pin.projectItem);
+  env.select([pin.projectItem]);
+  const info = JSON.parse(RSZ_activeSequenceInfo());
+  assert.strictEqual(info.label, "2 : 3");   // shown in the panel
+  assert.strictEqual(info.ratio, null);      // but never a GG/FB source
+  assert.deepStrictEqual(info.ratios, []);   // so it constrains no chip
+  // GG on it is refused per-source rather than producing junk
+  const res = JSON.parse(RSZ_runResize("GG", "", 1, 0.5, 0.5, 0.5, 0.5));
+  assert.strictEqual(res.results[0].error, "UNKNOWN_RATIO");
+});
+
+test("the probe lists the distinct source ratios of a selection", () => {
+  const env = setup();
+  const a = env.makeSeq("Tall", 1080, 1920);
+  const b = env.makeSeq("Square", 1080, 1080);
+  env.rootChildren.push(a.projectItem, b.projectItem);
+  env.select([a.projectItem, b.projectItem]);
+  const info = JSON.parse(RSZ_activeSequenceInfo());
+  assert.deepStrictEqual(info.ratios, ["9-16", "1-1"]);
+  assert.strictEqual(info.count, 2);
+});

@@ -189,7 +189,8 @@ function RSZ_activeInfoObj() {
   }
 
   return { seq: seq, from: r.from, name: seq.name, width: g.w, height: g.h,
-           ratio: RSZ.detectRatio(g.w, g.h), count: r.seqs.length, ratios: ratios };
+           ratio: RSZ.detectRatio(g.w, g.h), label: RSZ.describeRatio(g.w, g.h),
+           count: r.seqs.length, ratios: ratios };
 }
 
 // Public (evalScript): JSON string for the panel. detectRatio is the single
@@ -203,6 +204,7 @@ function RSZ_activeSequenceInfo() {
   return '{"name":"' + RSZ_esc(o.name) + '","width":' + o.width
        + ',"height":' + o.height + ',"from":"' + o.from + '"'
        + ',"count":' + o.count + ',"ratios":[' + rl.join(",") + ']'
+       + ',"label":' + (o.label ? ('"' + RSZ_esc(o.label) + '"') : 'null')
        + ',"ratio":' + (o.ratio ? ('"' + o.ratio + '"') : 'null') + '}';
 }
 

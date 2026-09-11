@@ -89,6 +89,12 @@ block in `publish.sh` can be deleted.
   Premiere's script engine. Red means the jsx layer isn't responding —
   close and reopen the panel.
 - **SEQUENCE OPEN / NO SEQUENCE** (header pill): whether a sequence is active.
+- The source block reads **any** sequence, including ratios the panel will never
+  resize: `describeRatio()` labels the named sizes (9:16 / 4:5 / 1:1 / 2:3),
+  reduces the rest (1920×1080 → `16 : 9`) and approximates awkward ones
+  (`≈ 5 : 4`). It is deliberately separate from `detectRatio()`, which stays
+  narrow so a 2:3 sequence is *read* but never used as a GG/FB source. The
+  preview box takes the sequence's real aspect.
 - **READY / BUSY** (footer light): idle vs. a resize currently running.
 
 ## Settings (⚙)

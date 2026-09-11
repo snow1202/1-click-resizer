@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ExtensionManifest Version="7.0" ExtensionBundleId="com.oneclickresize.panel"
-    ExtensionBundleVersion="1.10.1" ExtensionBundleName="1-Click Resizer"
+    ExtensionBundleVersion="1.10.2" ExtensionBundleName="1-Click Resizer"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <ExtensionList>
-    <Extension Id="com.oneclickresize.panel.main" Version="1.10.1" />
+    <Extension Id="com.oneclickresize.panel.main" Version="1.10.2" />
   </ExtensionList>
   <ExecutionEnvironment>
     <HostList>

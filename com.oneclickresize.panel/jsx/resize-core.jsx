@@ -47,6 +47,41 @@ var RSZ = (function () {
     return best;
   }
 
+  function gcd(a, b) {
+    a = Math.abs(a); b = Math.abs(b);
+    while (b) { var t = a % b; a = b; b = t; }
+    return a;
+  }
+
+  // A readable label for ANY frame size. This is DISPLAY ONLY and deliberately
+  // separate from detectRatio: the panel should be able to tell you what a
+  // sequence is even when it will never resize it (2:3 is the obvious case —
+  // recognised here, but still not a GG/FB source). Named ratios keep their
+  // familiar label; anything else is reduced (1920×1080 -> "16 : 9") or, when the
+  // reduction is unwieldy, approximated with a small denominator.
+  function describeRatio(w, h) {
+    if (!(w > 0) || !(h > 0)) { return null; }
+    var a = aspectOf(w, h);
+    for (var key in RATIOS) {
+      if (!RATIOS.hasOwnProperty(key)) { continue; }
+      var r = RATIOS[key];
+      if (Math.abs(aspectOf(r.w, r.h) - a) <= EPS) {
+        return LABELS[key].replace("x", " : ");
+      }
+    }
+    var g = gcd(w, h) || 1;
+    var rw = w / g, rh = h / g;
+    if (rw <= 64 && rh <= 64) { return rw + " : " + rh; }
+    var bestN = 0, bestD = 1, bestErr = -1;
+    for (var d = 1; d <= 32; d++) {
+      var n = Math.round(a * d);
+      if (n < 1) { continue; }
+      var err = Math.abs(n / d - a);
+      if (bestErr < 0 || err < bestErr) { bestErr = err; bestN = n; bestD = d; }
+    }
+    return "≈ " + bestN + " : " + bestD;
+  }
+
   function otherRatios(label) {
     var out = [];
     for (var i = 0; i < ORDER.length; i++) {
@@ -138,6 +173,7 @@ var RSZ = (function () {
     LABELS: LABELS,
     detectRatio: detectRatio,
     otherRatios: otherRatios,
+    describeRatio: describeRatio,
     stripTrailingRatioLabel: stripTrailingRatioLabel,
     buildName: buildName,
     clamp01: clamp01,

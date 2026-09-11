@@ -64,9 +64,17 @@
     }
     var rb = document.querySelector(".ratiobox");
     if (rb) {
-      rb.className = "ratiobox " + (!info || !info.ratio ? "none"
-        : info.ratio === "4-5" ? "r45"
-        : info.ratio === "1-1" ? "r11" : "r916");
+      // Draw the real aspect rather than one of three canned shapes, so an
+      // unusual sequence still looks like itself.
+      var known = !!(info && info.width > 0 && info.height > 0);
+      rb.className = "ratiobox" + (known ? "" : " none");
+      if (known) {
+        var h = 40, w = Math.round(h * (info.width / info.height));
+        rb.style.height = h + "px";
+        rb.style.width = Math.max(10, Math.min(64, w)) + "px";
+      } else {
+        rb.style.width = ""; rb.style.height = "";
+      }
     }
   }
 
@@ -108,7 +116,7 @@
           renderTargets();          // a chip may have just become redundant
         }
         if (info) {
-          el.querySelector("b").textContent = RATIO_DISPLAY[info.ratio] || "—";
+          el.querySelector("b").textContent = info.label || RATIO_DISPLAY[info.ratio] || "—";
           var sizeTxt = info.width + " × " + info.height;
           if (info.count > 1) { sizeTxt += " · +" + (info.count - 1) + " sequence nữa"; }
           el.querySelector("span").textContent = sizeTxt;

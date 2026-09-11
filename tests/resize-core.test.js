@@ -146,3 +146,23 @@ test("FB joins the platform tags and swaps cleanly with the others", () => {
   // a real name merely ending in FB keeps it (no ratio label in front)
   assert.strictEqual(RSZ.stripTrailingRatioLabel("Highlights FB"), "Highlights FB");
 });
+
+test("describeRatio labels ANY frame size without widening what can be resized", () => {
+  // the named sizes keep their familiar label
+  assert.strictEqual(RSZ.describeRatio(1080, 1920), "9 : 16");
+  assert.strictEqual(RSZ.describeRatio(1080, 1350), "4 : 5");
+  assert.strictEqual(RSZ.describeRatio(1080, 1080), "1 : 1");
+  // 2:3 is READ correctly but is still not a resize source — that separation is
+  // the whole point of keeping describeRatio apart from detectRatio.
+  assert.strictEqual(RSZ.describeRatio(1080, 1620), "2 : 3");
+  assert.strictEqual(RSZ.detectRatio(1080, 1620), null);
+  assert.strictEqual(RSZ.describeRatio(1000, 1500), "2 : 3");
+  // sizes the panel never touches are still reported
+  assert.strictEqual(RSZ.describeRatio(1920, 1080), "16 : 9");
+  assert.strictEqual(RSZ.describeRatio(2560, 1080), "64 : 27");
+  // an awkward size is approximated rather than shown as a giant fraction
+  assert.strictEqual(RSZ.describeRatio(1234, 987), "≈ 5 : 4");
+  // guards
+  assert.strictEqual(RSZ.describeRatio(0, 100), null);
+  assert.strictEqual(RSZ.describeRatio(100, 0), null);
+});
