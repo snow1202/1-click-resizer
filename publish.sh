@@ -116,6 +116,10 @@ fi
 # through a throwaway credential helper — nothing is written to disk or to config.
 if git remote get-url legacy >/dev/null 2>&1; then
   echo "→ Mirroring v$new to the legacy repo (pre-move installs) …"
+  # `gh release create` makes the tag on the REMOTE, so fetch it before mirroring —
+  # otherwise `push --tags` only carries tags this clone already had and the legacy
+  # repo ends up one version-tag behind on every release.
+  git fetch origin --tags --quiet 2>/dev/null || true
   if git -c credential.helper='!f(){ test "$1" = get && { echo username=tungnguyen1202; echo "password=$(gh auth token --user tungnguyen1202)"; }; };f' \
        push legacy main --quiet \
      && git -c credential.helper='!f(){ test "$1" = get && { echo username=tungnguyen1202; echo "password=$(gh auth token --user tungnguyen1202)"; }; };f' \
