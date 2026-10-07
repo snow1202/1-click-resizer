@@ -172,7 +172,9 @@ var RSZ = (function () {
 
   // Top-level bin that holds every platform bin.
   var ROOT_BIN_NAMES = ["timeline", "timelines", "sequence", "sequences"];
-  // Accepted names per platform; the FIRST is the one used when it must be created.
+  // Accepted names per platform: [full name, short tag, ...aliases]. Which of
+  // the first two is used when a bin must be created follows the project's own
+  // convention (see platformBinName).
   var PLATFORM_BIN_NAMES = {
     GG:  ["Google", "GG"],
     FB:  ["Facebook", "FB", "Meta"],
@@ -187,6 +189,22 @@ var RSZ = (function () {
     var names = PLATFORM_BIN_NAMES[platform] || [];
     for (var i = 0; i < names.length; i++) { if (lc(names[i]) === lc(name)) { return true; } }
     return false;
+  }
+
+  // Name for a NEW platform bin, matching how the project already names the
+  // other platform bins beside it: "GG"/"FB" there -> "PIN"; "Google"/"Facebook"
+  // -> "Pinterest". Full names when there is nothing to go by.
+  function platformBinName(platform, siblingNames) {
+    var full = 0, short = 0, p, i, k;
+    for (i = 0; i < (siblingNames || []).length; i++) {
+      for (p in PLATFORM_BIN_NAMES) {
+        if (!PLATFORM_BIN_NAMES.hasOwnProperty(p)) { continue; }
+        k = PLATFORM_BIN_NAMES[p];
+        if (lc(k[0]) === lc(siblingNames[i])) { full++; }
+        else if (lc(k[1]) === lc(siblingNames[i])) { short++; }
+      }
+    }
+    return PLATFORM_BIN_NAMES[platform][short > full ? 1 : 0];
   }
 
   // "Veracomfort vid 22.0 [..]" -> 22, "Brand vid17.1" -> 17, "Promo v9.2" -> 9.
@@ -217,9 +235,11 @@ var RSZ = (function () {
 
   // Inside a platform bin, decide where version `n` belongs.
   //   Facebook/v1,v2,v3/{1x..23x}  -> the vN bins are CONTAINERS (they hold
-  //   version bins), so the "home" is the latest one: v3.
+  //   version bins). The "home" is the one holding the MOST version bins — that
+  //   is the line still being developed; thinner ones are switched OFF.
   //   Google/{1x..20x}             -> Google itself is the home.
-  // A home's existing version bins also fix the naming style (22x vs v22).
+  // A home's existing version bins also fix the naming style (22x vs v22);
+  // "v22" wins a tie and is the default when there is nothing to copy.
   // Returns { home, existing, name }: `existing` is the bin to reuse, otherwise
   // `name` is what to create inside `home`.
   function planVersionBin(platformNode, n) {
@@ -242,8 +262,10 @@ var RSZ = (function () {
       for (var i = 0; i < h.leaves.length; i++) { m = Math.max(m, parseVersionBin(h.leaves[i].name).n); }
       return m;
     }
-    // Most recent first: the home that already reaches the highest version.
-    homes.sort(function (a, b) { return maxOf(b) - maxOf(a); });
+    // Active line first: most version bins, then the highest version reached.
+    homes.sort(function (a, b) {
+      return (b.leaves.length - a.leaves.length) || (maxOf(b) - maxOf(a));
+    });
 
     for (var h = 0; h < homes.length; h++) {
       for (var l = 0; l < homes[h].leaves.length; l++) {
@@ -252,13 +274,13 @@ var RSZ = (function () {
         }
       }
     }
-    if (!homes.length) { return { home: platformNode, existing: null, name: versionBinName(n, "x") }; }
+    if (!homes.length) { return { home: platformNode, existing: null, name: versionBinName(n, "v") }; }
 
     var home = homes[0], v = 0, x = 0;
     for (var j = 0; j < home.leaves.length; j++) {
       if (parseVersionBin(home.leaves[j].name).style === "v") { v++; } else { x++; }
     }
-    return { home: home.node, existing: null, name: versionBinName(n, v > x ? "v" : "x") };
+    return { home: home.node, existing: null, name: versionBinName(n, x > v ? "x" : "v") };
   }
 
   function clamp01(v) { return v < 0 ? 0 : (v > 1 ? 1 : v); }
@@ -285,6 +307,7 @@ var RSZ = (function () {
     versionOf: versionOf,
     parseVersionBin: parseVersionBin,
     versionBinName: versionBinName,
+    platformBinName: platformBinName,
     planVersionBin: planVersionBin
   };
 })();

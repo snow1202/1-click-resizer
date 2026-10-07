@@ -422,14 +422,35 @@ test("the new bin follows the siblings' naming style (v21 -> v22)", () => {
   assert.ok(res.results.every(r => r.bin === "Sequence/GG/v22"), JSON.stringify(res.results));
 });
 
+test("a missing platform bin copies the short GG/FB convention", () => {
+  const env = setup();
+  const s = env.makeSeq("Brand vid9.1", 1080, 1920);
+  env.rootChildren.push(env.makeBin("Timeline", [env.makeBin("GG"), env.makeBin("FB")]), s.projectItem);
+  env.select([s.projectItem]);
+  const res = JSON.parse(RSZ_runResize("PIN", "", 1, 0.5, 0.5, 0.5, 0.5));
+  assert.strictEqual(res.results[0].bin, "Timeline/PIN/v9");
+  assert.deepStrictEqual(env.created, ["Timeline/PIN", "PIN/v9"]);
+});
+
+test("FB picks the vN container with the most bins, not the newest one", () => {
+  const env = setup();
+  const s = env.makeSeq("Veracomfort vid 30.0", 1080, 1920);
+  const busy = [1, 2, 3, 4, 5].map(i => env.makeBin(i + "x"));
+  env.rootChildren.push(env.makeBin("Timeline", [env.makeBin("Facebook", [
+    env.makeBin("v2", busy), env.makeBin("v3", [env.makeBin("1x")])])]), s.projectItem);
+  env.select([s.projectItem]);
+  const res = JSON.parse(RSZ_runResize("FB", "", 1, 0.5, 0.5, 0.5, 0.5));
+  assert.strictEqual(res.results[0].bin, "Timeline/Facebook/v2/30x");
+});
+
 test("a missing platform bin is created under Timeline", () => {
   const env = setup();
   const s = env.makeSeq("Brand vid9.1", 1080, 1920);
   env.rootChildren.push(env.makeBin("Timeline", [env.makeBin("Google")]), s.projectItem);
   env.select([s.projectItem]);
   const res = JSON.parse(RSZ_runResize("PIN", "", 1, 0.5, 0.5, 0.5, 0.5));
-  assert.strictEqual(res.results[0].bin, "Timeline/Pinterest/9x");
-  assert.deepStrictEqual(env.created, ["Timeline/Pinterest", "Pinterest/9x"]);
+  assert.strictEqual(res.results[0].bin, "Timeline/Pinterest/v9");      // nothing to copy -> v-style
+  assert.deepStrictEqual(env.created, ["Timeline/Pinterest", "Pinterest/v9"]);
 });
 
 test("no Timeline/Sequence bin -> falls back to the source's own bin", () => {

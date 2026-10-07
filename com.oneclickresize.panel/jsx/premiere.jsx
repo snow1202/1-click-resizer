@@ -315,7 +315,9 @@ function RSZ_routeBin(job, platform, cache) {
 
   var plat = null, kids = RSZ_childBins(root);
   for (i = 0; i < kids.length; i++) { if (RSZ.isPlatformBinName(kids[i].name, platform)) { plat = kids[i]; break; } }
-  var platName = plat ? String(plat.name) : RSZ.PLATFORM_BIN_NAMES[platform][0];
+  var sibNames = [];
+  for (i = 0; i < kids.length; i++) { sibNames.push(String(kids[i].name)); }
+  var platName = plat ? String(plat.name) : RSZ.platformBinName(platform, sibNames);
   if (!plat) { plat = RSZ_ensureChildBin(root, platName); }
   if (!plat) { cache[key] = null; return null; }
 

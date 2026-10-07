@@ -182,14 +182,26 @@ test("parseVersionBin knows both naming styles", () => {
   assert.strictEqual(RSZ.parseVersionBin("Google"), null);
 });
 
-test("planVersionBin picks the latest vN container and the siblings' style", () => {
+test("planVersionBin picks the vN container with the MOST bins and the siblings' style", () => {
   const b = (name, kids) => ({ name, kids: kids || [] });
-  const fb = b("Facebook", [b("v1", [b("1x")]), b("v2", [b("1x"), b("5x")]), b("v3", [b("1x"), b("23x")])]);
+  const fb = b("Facebook", [b("v1", [b("1x")]), b("v2", [b("1x"), b("5x")]), b("v3", [b("1x"), b("2x"), b("23x")])]);
   const p = RSZ.planVersionBin(fb, 24);
   assert.strictEqual(p.home.name, "v3");
   assert.strictEqual(p.name, "24x");
   assert.strictEqual(p.existing, null);
   assert.strictEqual(RSZ.planVersionBin(fb, 5).existing.name, "5x");   // reuse wherever it exists
   assert.strictEqual(RSZ.planVersionBin(b("GG", [b("v20"), b("v21")]), 22).name, "v22");
-  assert.strictEqual(RSZ.planVersionBin(b("Google", []), 3).name, "3x");   // default style
+  assert.strictEqual(RSZ.planVersionBin(b("Google", []), 3).name, "v3");   // default style is v
+  assert.strictEqual(RSZ.planVersionBin(b("GG", [b("v20"), b("21x")]), 22).name, "v22");   // tie -> v
+  assert.strictEqual(RSZ.planVersionBin(b("Google", [b("20x"), b("21x")]), 22).name, "22x"); // siblings win
+  // a newer-numbered but thinner line is OFF: the busy v2 is still the home
+  const off = b("Facebook", [b("v2", [b("1x"), b("2x"), b("3x"), b("4x")]), b("v3", [b("1x")])]);
+  assert.strictEqual(RSZ.planVersionBin(off, 5).home.name, "v2");
+});
+
+test("platformBinName follows the project's GG/FB vs Google/Facebook convention", () => {
+  assert.strictEqual(RSZ.platformBinName("PIN", ["GG", "FB", "Amazon"]), "PIN");
+  assert.strictEqual(RSZ.platformBinName("PIN", ["Google", "Facebook"]), "Pinterest");
+  assert.strictEqual(RSZ.platformBinName("GG", ["fb"]), "GG");
+  assert.strictEqual(RSZ.platformBinName("FB", []), "Facebook");
 });
