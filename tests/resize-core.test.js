@@ -205,3 +205,22 @@ test("platformBinName follows the project's GG/FB vs Google/Facebook convention"
   assert.strictEqual(RSZ.platformBinName("GG", ["fb"]), "GG");
   assert.strictEqual(RSZ.platformBinName("FB", []), "Facebook");
 });
+
+// Premiere's ExtendScript is ES3: its "future reserved words" (short, int,
+// class, const, let …) are SYNTAX ERRORS there even though Node accepts them —
+// one of them in a .jsx kills the whole engine (panel shows ENGINE ERR).
+test("no ES3 reserved word is used as an identifier in any .jsx", () => {
+  const fs = require("node:fs"), path = require("node:path");
+  const dir = path.join(__dirname, "..", "com.oneclickresize.panel", "jsx");
+  const RESERVED = ("abstract boolean byte char class const debugger double enum export extends final " +
+    "float goto implements import int interface long native package private protected public short " +
+    "static super synchronized throws transient volatile let").split(" ");
+  const hits = [];
+  fs.readdirSync(dir).filter(f => f.endsWith(".jsx")).forEach(f => {
+    fs.readFileSync(path.join(dir, f), "utf8").split("\n").forEach((line, i) => {
+      const code = line.replace(/\/\/.*$/, "").replace(/"(?:[^"\\]|\\.)*"/g, '""');
+      RESERVED.forEach(w => { if (new RegExp("\\b" + w + "\\b").test(code)) { hits.push(f + ":" + (i + 1) + " " + w); } });
+    });
+  });
+  assert.deepStrictEqual(hits, []);
+});

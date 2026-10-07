@@ -195,16 +195,16 @@ var RSZ = (function () {
   // other platform bins beside it: "GG"/"FB" there -> "PIN"; "Google"/"Facebook"
   // -> "Pinterest". Full names when there is nothing to go by.
   function platformBinName(platform, siblingNames) {
-    var full = 0, short = 0, p, i, k;
+    var nFull = 0, nShort = 0, p, i, k;
     for (i = 0; i < (siblingNames || []).length; i++) {
       for (p in PLATFORM_BIN_NAMES) {
         if (!PLATFORM_BIN_NAMES.hasOwnProperty(p)) { continue; }
         k = PLATFORM_BIN_NAMES[p];
-        if (lc(k[0]) === lc(siblingNames[i])) { full++; }
-        else if (lc(k[1]) === lc(siblingNames[i])) { short++; }
+        if (lc(k[0]) === lc(siblingNames[i])) { nFull++; }
+        else if (lc(k[1]) === lc(siblingNames[i])) { nShort++; }
       }
     }
-    return PLATFORM_BIN_NAMES[platform][short > full ? 1 : 0];
+    return PLATFORM_BIN_NAMES[platform][nShort > nFull ? 1 : 0];
   }
 
   // "Veracomfort vid 22.0 [..]" -> 22, "Brand vid17.1" -> 17, "Promo v9.2" -> 9.
