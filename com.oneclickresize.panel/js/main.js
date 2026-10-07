@@ -187,7 +187,7 @@
          : "có lỗi xảy ra") + "</p>";
       return;
     }
-    var made = 0, failed = 0;
+    var made = 0, failed = 0, bins = [], binSeen = {};
     for (var i = 0; i < payload.results.length; i++) {
       var r = payload.results[i];
       var row = document.createElement("div");
@@ -210,7 +210,26 @@
         if (r.orphan) { sub += " — bản dở dang: " + r.orphan; }
       }
       row.querySelector(".oinfo span").textContent = sub;
+      if (ok && r.binId) {
+        // Only one bin can be selected at a time — each row selects its own.
+        row.className += " pick";
+        row.setAttribute("data-tip", "Bấm để chọn bin " + r.bin + " trong Project panel");
+        (function (id) {
+          row.addEventListener("click", function () {
+            evalAsync('RSZ_revealBinById("' + id.replace(/"/g, '\\"') + '")', function () {});
+          });
+        })(r.binId);
+        if (!binSeen[r.bin]) { binSeen[r.bin] = true; bins.push(r.bin); }
+      }
       outs.appendChild(row);
+    }
+    // Several destinations: list them, since the auto-selection shows only the first.
+    if (bins.length > 1) {
+      var bl = document.createElement("p");
+      bl.className = "hint binlist";
+      bl.textContent = "Đã xếp vào " + bins.length + " bin: " + bins.join(" · ")
+                     + " — bấm vào từng dòng để chọn bin của dòng đó.";
+      outs.appendChild(bl);
     }
     // Batch summary: how many sources went in, how many sequences came out.
     if (payload.count > 1 || failed) {
@@ -499,11 +518,51 @@
     }, 2000);
   }
 
-  function showSettings(show) {
-    var main = document.getElementById("main-view");
-    var settings = document.getElementById("settings");
-    if (main) { main.style.display = show ? "none" : "block"; }
-    if (settings) { settings.style.display = show ? "block" : "none"; }
+  function showSettings(show) { showView(show ? "settings" : "main-view"); }
+
+  // One of: main-view | settings | changelog.
+  function showView(id) {
+    var views = ["main-view", "settings", "changelog"];
+    for (var i = 0; i < views.length; i++) {
+      var el = document.getElementById(views[i]);
+      if (el) { el.style.display = views[i] === id ? "block" : "none"; }
+    }
+  }
+
+  // ---- Changelog (data in js/changelog.js, newest first) -------------------
+  function renderChangelog() {
+    var list = document.getElementById("cl-list");
+    var log = window.RSZ_CHANGELOG || [];
+    if (!list || list.getAttribute("data-done")) { return; }
+    list.setAttribute("data-done", "1");
+    for (var i = 0; i < log.length; i++) {
+      var e = log[i];
+      var item = document.createElement("div");
+      item.className = "clitem";
+      var h = document.createElement("div");
+      h.className = "clhead";
+      h.innerHTML = '<b></b><span></span>';
+      h.querySelector("b").textContent = "Version " + e.v;
+      h.querySelector("span").textContent = e.date;
+      item.appendChild(h);
+      var ul = document.createElement("ul");
+      for (var j = 0; j < e.notes.length; j++) {
+        var li = document.createElement("li");
+        li.textContent = e.notes[j];
+        ul.appendChild(li);
+      }
+      item.appendChild(ul);
+      list.appendChild(item);
+    }
+  }
+
+  function initChangelog() {
+    var open = document.getElementById("cl-open");
+    var back = document.getElementById("cl-back");
+    var done = document.getElementById("cl-done");
+    if (open) { open.addEventListener("click", function () { renderChangelog(); showView("changelog"); }); }
+    if (back) { back.addEventListener("click", function () { showView("main-view"); }); }
+    if (done) { done.addEventListener("click", function () { showView("main-view"); }); }
   }
 
   // ---- Text guide editor (one horizontal guide line per ratio) -----------
@@ -615,4 +674,5 @@
     if (done) { done.addEventListener("click", function () { showSettings(false); }); }
   }
   initSettings();
+  initChangelog();
 })();

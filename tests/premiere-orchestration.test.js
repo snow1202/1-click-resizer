@@ -460,3 +460,25 @@ test("no Timeline/Sequence bin -> falls back to the source's own bin", () => {
   assert.ok(res.results.every(r => r.bin === "19x"));
   assert.deepStrictEqual(env.created, []);
 });
+
+test("a mixed batch (v22 + v23 in different bins) lands each version in its own bin", () => {
+  const env = setup();
+  teamProject(env, 22);
+  const v23 = ["0", "1"].map(m => env.makeSeq("Veracomfort vid 23." + m, 1080, 1920));
+  env.rootChildren.push(env.makeBin("incoming", v23.map(s => s.projectItem)));   // a different source bin
+  const v22 = env.makeSeq("Veracomfort vid 22.9", 1080, 1920);
+  env.rootChildren.push(v22.projectItem);
+  env.select(v23.map(s => s.projectItem).concat([v22.projectItem]));
+  const res = JSON.parse(RSZ_runResize("GG", "", 1, 0.5, 0.5, 0.5, 0.5));
+  const binsOf = (v) => [...new Set(res.results.filter(r => r.src.indexOf("vid " + v) !== -1).map(r => r.bin))];
+  assert.deepStrictEqual(binsOf("23."), ["Timeline/Google/23x"]);
+  assert.deepStrictEqual(binsOf("22."), ["Timeline/Google/22x"]);
+  assert.deepStrictEqual(env.created.sort(), ["Google/22x", "Google/23x"]);
+  // every row carries its bin's id so the panel can select it on click
+  assert.ok(res.results.every(r => r.binId), JSON.stringify(res.results));
+  const id22 = res.results.find(r => r.bin === "Timeline/Google/22x").binId;
+  env.selectedBins.length = 0;
+  assert.strictEqual(RSZ_revealBinById(id22), "ok");
+  assert.deepStrictEqual(env.selectedBins, ["22x"]);
+  assert.strictEqual(RSZ_revealBinById("nope"), "missing");
+});

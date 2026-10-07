@@ -342,6 +342,22 @@ function RSZ_revealBin(bin) {
   return false;
 }
 
+// Panel row click: select the bin with this nodeId. A batch can land in several
+// bins but only one can be selected at a time, so each output row offers its own.
+function RSZ_revealBinById(id) {
+  function walk(bin) {
+    var kids = RSZ_childBins(bin);
+    for (var i = 0; i < kids.length; i++) {
+      try { if (String(kids[i].nodeId) === String(id)) { return kids[i]; } } catch (e) {}
+      var hit = walk(kids[i]);
+      if (hit) { return hit; }
+    }
+    return null;
+  }
+  var b = walk(app.project.rootItem);
+  return (b && RSZ_revealBin(b)) ? "ok" : "missing";
+}
+
 // Move a sequence's ProjectItem into `bin`. No-op (false) when there is no bin
 // to move into or the host lacks moveBin. Returns true only if it moved.
 function RSZ_moveSeqToBin(seq, bin) {
@@ -459,11 +475,16 @@ function RSZ_makeVariant(sourceSeq, baseName, tgtRatio, platform, bgTrack, guide
     }
     dup.name = RSZ.buildName(baseName, tgtRatio, platform);
     // clone() drops the copy at the project root — put it beside its source.
-    var binName = RSZ_moveSeqToBin(dup, destBin) ? (destLabel || String(destBin.name)) : "";
+    var binName = "", binId = "";
+    if (RSZ_moveSeqToBin(dup, destBin)) {
+      binName = destLabel || String(destBin.name);
+      try { binId = String(destBin.nodeId); } catch (ie) {}
+    }
     var moved = RSZ_layoutClips(dup, bgTrack, guideY);
     return '{"ratio":"' + tgtRatio + '","name":"' + RSZ_esc(dup.name) + '"' + src
          + ',"moved":' + moved
-         + (binName ? ',"bin":"' + RSZ_esc(binName) + '"' : '') + '}';
+         + (binName ? ',"bin":"' + RSZ_esc(binName) + '"' : '')
+         + (binId ? ',"binId":"' + RSZ_esc(binId) + '"' : '') + '}';
   } catch (te) {
     return '{"ratio":"' + tgtRatio + '"' + src + ',"error":"' + RSZ_esc(String(te)) + '"'
          + (dup ? ',"orphan":"' + RSZ_esc(dup.name) + '"' : '') + '}';

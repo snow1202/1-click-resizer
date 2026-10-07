@@ -45,6 +45,12 @@ EOF
 fi
 msg="${*:-release v$new}"
 
+# --- Changelog entry required ---------------------------------------------------
+# The panel's Changelog button reads js/changelog.js; never ship a version it
+# can't describe.
+CHANGELOG="com.oneclickresize.panel/js/changelog.js"
+grep -q "v: \"$new\"" "$CHANGELOG" || { echo "❌ No entry for v$new in $CHANGELOG — add a short one (newest first), then publish."; exit 1; }
+
 # --- Show what will ship, confirm ----------------------------------------------
 echo "Publishing v$cur -> v$new …"
 if [ -n "$(git status --porcelain)" ]; then

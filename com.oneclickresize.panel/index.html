@@ -25,7 +25,10 @@
             </span>
             1-CLICK RESIZER
           </div>
-          <div class="ver"><b>V1.11.2</b></div>
+          <div class="ver">
+            <button type="button" id="cl-open" class="clbtn" data-tip="Xem các thay đổi của từng version">Changelog</button>
+            <b>V1.12.0</b>
+          </div>
         </div>
 
         <div class="pills">
@@ -124,11 +127,23 @@
         <button type="button" id="settings-done" class="sback">Xong</button>
       </div>
 
+      <div id="changelog" class="view-settings">
+        <div class="settings-head">
+          <button type="button" id="cl-back" class="iconbtn" title="Quay lại" aria-label="Quay lại">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <span class="label" style="margin:0">Changelog</span>
+        </div>
+        <div class="cllist" id="cl-list"></div>
+        <button type="button" id="cl-done" class="sback">Đóng</button>
+      </div>
+
     </div>
   </div>
   <script src="js/CSInterface.js"></script>
   <script src="js/prefs.js"></script>
   <script src="js/theme.js"></script>
+  <script src="js/changelog.js"></script>
   <script src="js/main.js"></script>
   <script src="js/updater.js"></script>
 </body>
