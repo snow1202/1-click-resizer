@@ -2,6 +2,9 @@
 // short lines per version. publish.sh refuses to release a version that has
 // no entry here, so add one BEFORE running it.
 window.RSZ_CHANGELOG = [
+  { v: "1.12.1", date: "2026-10-07", notes: [
+    "Bấm vào dòng kết quả: mở đúng sequence vừa tạo (thay vì chọn Bin)"
+  ] },
   { v: "1.12.0", date: "2026-10-07", notes: [
     "Thêm nút Changelog cạnh số version",
     "Bấm vào từng dòng kết quả để chọn đúng Bin của dòng đó",

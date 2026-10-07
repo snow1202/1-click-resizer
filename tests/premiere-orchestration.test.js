@@ -481,4 +481,10 @@ test("a mixed batch (v22 + v23 in different bins) lands each version in its own 
   assert.strictEqual(RSZ_revealBinById(id22), "ok");
   assert.deepStrictEqual(env.selectedBins, ["22x"]);
   assert.strictEqual(RSZ_revealBinById("nope"), "missing");
+  // clicking a row opens THAT new sequence
+  const row = res.results.find(r => r.name === "Veracomfort vid 23.1 1x1 GG");
+  assert.ok(row.seqId);
+  assert.strictEqual(RSZ_revealSequence(row.seqId), "ok");
+  assert.strictEqual(app.project.activeSequence.name, "Veracomfort vid 23.1 1x1 GG");
+  assert.strictEqual(RSZ_revealSequence("nope"), "missing");
 });

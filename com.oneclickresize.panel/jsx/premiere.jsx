@@ -358,6 +358,20 @@ function RSZ_revealBinById(id) {
   return (b && RSZ_revealBin(b)) ? "ok" : "missing";
 }
 
+// Panel row click: show THIS new sequence — open it in the Timeline and select
+// it in the Project panel. select() on a sequence item is best effort (the API
+// only guarantees it for bins); opening the sequence always works.
+function RSZ_revealSequence(id) {
+  var seqs = app.project.sequences, seq = null;
+  for (var i = 0; i < seqs.numSequences; i++) {
+    if (String(seqs[i].sequenceID) === String(id)) { seq = seqs[i]; break; }
+  }
+  if (!seq) { return "missing"; }
+  RSZ_makeActive(seq);
+  try { if (seq.projectItem && typeof seq.projectItem.select === "function") { seq.projectItem.select(); } } catch (e) {}
+  return "ok";
+}
+
 // Move a sequence's ProjectItem into `bin`. No-op (false) when there is no bin
 // to move into or the host lacks moveBin. Returns true only if it moved.
 function RSZ_moveSeqToBin(seq, bin) {
@@ -484,7 +498,8 @@ function RSZ_makeVariant(sourceSeq, baseName, tgtRatio, platform, bgTrack, guide
     return '{"ratio":"' + tgtRatio + '","name":"' + RSZ_esc(dup.name) + '"' + src
          + ',"moved":' + moved
          + (binName ? ',"bin":"' + RSZ_esc(binName) + '"' : '')
-         + (binId ? ',"binId":"' + RSZ_esc(binId) + '"' : '') + '}';
+         + (binId ? ',"binId":"' + RSZ_esc(binId) + '"' : '')
+         + ',"seqId":"' + RSZ_esc(String(dup.sequenceID)) + '"}';
   } catch (te) {
     return '{"ratio":"' + tgtRatio + '"' + src + ',"error":"' + RSZ_esc(String(te)) + '"'
          + (dup ? ',"orphan":"' + RSZ_esc(dup.name) + '"' : '') + '}';

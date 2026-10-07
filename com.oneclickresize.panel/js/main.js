@@ -210,17 +210,17 @@
         if (r.orphan) { sub += " — bản dở dang: " + r.orphan; }
       }
       row.querySelector(".oinfo span").textContent = sub;
-      if (ok && r.binId) {
-        // Only one bin can be selected at a time — each row selects its own.
+      if (ok && r.seqId) {
+        // Each row jumps to its own new sequence (Timeline + Project panel).
         row.className += " pick";
-        row.setAttribute("data-tip", "Bấm để chọn bin " + r.bin + " trong Project panel");
+        row.setAttribute("data-tip", "Bấm để mở sequence này" + (r.bin ? " (bin " + r.bin + ")" : ""));
         (function (id) {
           row.addEventListener("click", function () {
-            evalAsync('RSZ_revealBinById("' + id.replace(/"/g, '\\"') + '")', function () {});
+            evalAsync('RSZ_revealSequence("' + id.replace(/"/g, '\\"') + '")', function () {});
           });
-        })(r.binId);
-        if (!binSeen[r.bin]) { binSeen[r.bin] = true; bins.push(r.bin); }
+        })(r.seqId);
       }
+      if (ok && r.bin && !binSeen[r.bin]) { binSeen[r.bin] = true; bins.push(r.bin); }
       outs.appendChild(row);
     }
     // Several destinations: list them, since the auto-selection shows only the first.
@@ -228,7 +228,7 @@
       var bl = document.createElement("p");
       bl.className = "hint binlist";
       bl.textContent = "Đã xếp vào " + bins.length + " bin: " + bins.join(" · ")
-                     + " — bấm vào từng dòng để chọn bin của dòng đó.";
+                     + " — bấm vào từng dòng để mở đúng sequence đó.";
       outs.appendChild(bl);
     }
     // Batch summary: how many sources went in, how many sequences came out.
