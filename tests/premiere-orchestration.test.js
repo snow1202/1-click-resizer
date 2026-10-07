@@ -96,9 +96,15 @@ function setup() {
     return seq;
   }
 
+  const created = [];               // every createBin() call, as "parent/child"
+  const selectedBins = [];          // every bin.select() call (reveal)
   function makeBin(name, kids) {
-    return { nodeId: nid(), name, type: 2, isSequence: () => false,
-             get children() { return arrayLike(kids); } };
+    kids = kids || [];
+    const bin = { nodeId: nid(), name, type: 2, isSequence: () => false,
+                  get children() { return arrayLike(kids); },
+                  createBin(n) { const b = makeBin(n, []); kids.push(b); created.push(name + "/" + n); return b; },
+                  select() { selectedBins.push(name); } };
+    return bin;
   }
 
   let selection = [];
@@ -117,7 +123,7 @@ function setup() {
   };
 
   return {
-    makeSeq, makeBin, moves, rootChildren,
+    makeSeq, makeBin, moves, rootChildren, created, selectedBins,
     select: (items) => { selection = items; },
     setActive: (s) => { activeSequence = s; }
   };
@@ -347,4 +353,89 @@ test("the probe lists the distinct source ratios of a selection", () => {
   const info = JSON.parse(RSZ_activeSequenceInfo());
   assert.deepStrictEqual(info.ratios, ["9-16", "1-1"]);
   assert.strictEqual(info.count, 2);
+});
+
+// ---- platform bin routing ---------------------------------------------------
+
+// The real project layout from the team's screenshots:
+//   Timeline/Google/{1x..20x}   Timeline/Facebook/{v1,v2,v3/{1x..23x}}   Timeline/Pinterest/{5x..21x}
+function teamProject(env, srcVersion) {
+  const seqs = ["0", "1", "2"].map(m => env.makeSeq("Veracomfort vid " + srcVersion + "." + m + " [c.p][t.n]", 1080, 1920));
+  const v3kids = [];
+  for (let i = 1; i <= 23; i++) {
+    v3kids.push(env.makeBin(i + "x", i === srcVersion ? seqs.map(s => s.projectItem) : []));
+  }
+  const fb = env.makeBin("Facebook", [env.makeBin("v1", [env.makeBin("1x")]), env.makeBin("v2", [env.makeBin("1x")]),
+                                      env.makeBin("v3", v3kids)]);
+  const gg = env.makeBin("Google", [1, 2, 5, 7, 20].map(i => env.makeBin(i + "x")));
+  const pin = env.makeBin("Pinterest", [5, 6, 21].map(i => env.makeBin(i + "x")));
+  const tl = env.makeBin("Timeline", [env.makeBin("Amazon"), fb, gg, pin]);
+  env.rootChildren.push(tl);
+  env.select(seqs.map(s => s.projectItem));
+  return { seqs, gg, fb, pin, tl };
+}
+
+test("GG routes a v22 batch into Timeline/Google/22x, creating it once", () => {
+  const env = setup();
+  teamProject(env, 22);
+  const res = JSON.parse(RSZ_runResize("GG", "", 1, 0.5, 0.5, 0.5, 0.5));
+  assert.strictEqual(res.results.length, 6);
+  assert.ok(res.results.every(r => r.bin === "Timeline/Google/22x"), JSON.stringify(res.results));
+  assert.deepStrictEqual(env.created, ["Google/22x"]);         // one bin for all three sources
+  assert.ok(env.moves.every(m => m.bin === "22x"));
+  assert.deepStrictEqual(env.selectedBins, ["22x"]);           // revealed
+});
+
+test("FB reuses the existing Facebook/v3/22x (the latest vN container)", () => {
+  const env = setup();
+  teamProject(env, 22);
+  const res = JSON.parse(RSZ_runResize("FB", "", 1, 0.5, 0.5, 0.5, 0.5));
+  assert.ok(res.results.every(r => r.bin === "Timeline/Facebook/v3/22x"), JSON.stringify(res.results));
+  assert.deepStrictEqual(env.created, []);
+});
+
+test("FB creates a missing version inside the latest vN container", () => {
+  const env = setup();
+  teamProject(env, 22);
+  const s = env.makeSeq("Veracomfort vid 24.0", 1080, 1920);   // no 24x anywhere yet
+  env.rootChildren.push(s.projectItem);
+  env.select([s.projectItem]);
+  const res = JSON.parse(RSZ_runResize("FB", "", 1, 0.5, 0.5, 0.5, 0.5));
+  assert.strictEqual(res.results[0].bin, "Timeline/Facebook/v3/24x");
+  assert.deepStrictEqual(env.created, ["v3/24x"]);
+});
+
+test("PIN goes to Timeline/Pinterest/<n>x", () => {
+  const env = setup();
+  teamProject(env, 22);
+  const res = JSON.parse(RSZ_runResize("PIN", "", 1, 0.5, 0.5, 0.5, 0.5));
+  assert.ok(res.results.every(r => r.bin === "Timeline/Pinterest/22x"), JSON.stringify(res.results));
+});
+
+test("the new bin follows the siblings' naming style (v21 -> v22)", () => {
+  const env = setup();
+  const s = env.makeSeq("Brand vid22.0", 1080, 1920);
+  env.rootChildren.push(env.makeBin("Sequence", [env.makeBin("GG", [env.makeBin("v20"), env.makeBin("v21")])]),
+                        s.projectItem);
+  env.select([s.projectItem]);
+  const res = JSON.parse(RSZ_runResize("GG", "", 1, 0.5, 0.5, 0.5, 0.5));
+  assert.ok(res.results.every(r => r.bin === "Sequence/GG/v22"), JSON.stringify(res.results));
+});
+
+test("a missing platform bin is created under Timeline", () => {
+  const env = setup();
+  const s = env.makeSeq("Brand vid9.1", 1080, 1920);
+  env.rootChildren.push(env.makeBin("Timeline", [env.makeBin("Google")]), s.projectItem);
+  env.select([s.projectItem]);
+  const res = JSON.parse(RSZ_runResize("PIN", "", 1, 0.5, 0.5, 0.5, 0.5));
+  assert.strictEqual(res.results[0].bin, "Timeline/Pinterest/9x");
+  assert.deepStrictEqual(env.created, ["Timeline/Pinterest", "Pinterest/9x"]);
+});
+
+test("no Timeline/Sequence bin -> falls back to the source's own bin", () => {
+  const env = setup();
+  threeInABin(env);          // "19x" at the root, no Timeline bin
+  const res = JSON.parse(RSZ_runResize("GG", "", 1, 0.5, 0.5, 0.5, 0.5));
+  assert.ok(res.results.every(r => r.bin === "19x"));
+  assert.deepStrictEqual(env.created, []);
 });

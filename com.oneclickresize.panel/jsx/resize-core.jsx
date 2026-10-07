@@ -165,6 +165,102 @@ var RSZ = (function () {
     return false;
   }
 
+  // ---- platform bin routing ------------------------------------------------
+  // The team files sequences as  Timeline/<Platform>/[vN/]<22x | v22>/…  .
+  // Everything here is pure (works on plain {name, kids} trees) so the routing
+  // rules are unit-tested; premiere.jsx only feeds it real bins and acts on it.
+
+  // Top-level bin that holds every platform bin.
+  var ROOT_BIN_NAMES = ["timeline", "timelines", "sequence", "sequences"];
+  // Accepted names per platform; the FIRST is the one used when it must be created.
+  var PLATFORM_BIN_NAMES = {
+    GG:  ["Google", "GG"],
+    FB:  ["Facebook", "FB", "Meta"],
+    PIN: ["Pinterest", "PIN"]
+  };
+
+  function lc(s) { return String(s === undefined || s === null ? "" : s).toLowerCase().replace(/^\s+|\s+$/g, ""); }
+
+  function isRootBinName(name) { return contains(ROOT_BIN_NAMES, lc(name)); }
+
+  function isPlatformBinName(name, platform) {
+    var names = PLATFORM_BIN_NAMES[platform] || [];
+    for (var i = 0; i < names.length; i++) { if (lc(names[i]) === lc(name)) { return true; } }
+    return false;
+  }
+
+  // "Veracomfort vid 22.0 [..]" -> 22, "Brand vid17.1" -> 17, "Promo v9.2" -> 9.
+  // null when the name carries no version, so the caller keeps the old placement.
+  function versionOf(name) {
+    var s = String(name || "");
+    var m = s.match(/(?:^|[^a-z0-9])v(?:id)?\s*(\d+)(?:\.\d+)?(?![a-z0-9])/i);
+    return m ? parseInt(m[1], 10) : null;
+  }
+
+  // "22x" -> {n:22, style:"x"}, "v22" -> {n:22, style:"v"}, anything else -> null.
+  function parseVersionBin(name) {
+    var s = lc(name), m;
+    if ((m = s.match(/^(\d+)\s*x$/))) { return { n: parseInt(m[1], 10), style: "x" }; }
+    if ((m = s.match(/^v\s*(\d+)$/))) { return { n: parseInt(m[1], 10), style: "v" }; }
+    return null;
+  }
+
+  function versionBinName(n, style) { return style === "v" ? ("v" + n) : (n + "x"); }
+
+  function kidsOf(node) { return (node && node.kids) || []; }
+
+  function hasVersionKids(node) {
+    var k = kidsOf(node);
+    for (var i = 0; i < k.length; i++) { if (parseVersionBin(k[i].name)) { return true; } }
+    return false;
+  }
+
+  // Inside a platform bin, decide where version `n` belongs.
+  //   Facebook/v1,v2,v3/{1x..23x}  -> the vN bins are CONTAINERS (they hold
+  //   version bins), so the "home" is the latest one: v3.
+  //   Google/{1x..20x}             -> Google itself is the home.
+  // A home's existing version bins also fix the naming style (22x vs v22).
+  // Returns { home, existing, name }: `existing` is the bin to reuse, otherwise
+  // `name` is what to create inside `home`.
+  function planVersionBin(platformNode, n) {
+    var homes = [];
+    function walk(node, depth) {
+      var k = kidsOf(node), leaves = [], i;
+      for (i = 0; i < k.length; i++) {
+        if (parseVersionBin(k[i].name) && !hasVersionKids(k[i])) { leaves.push(k[i]); }
+      }
+      if (leaves.length) { homes.push({ node: node, leaves: leaves }); }
+      if (depth >= 3) { return; }
+      for (i = 0; i < k.length; i++) {
+        if (!contains(leaves, k[i])) { walk(k[i], depth + 1); }
+      }
+    }
+    walk(platformNode, 0);
+
+    function maxOf(h) {
+      var m = -1;
+      for (var i = 0; i < h.leaves.length; i++) { m = Math.max(m, parseVersionBin(h.leaves[i].name).n); }
+      return m;
+    }
+    // Most recent first: the home that already reaches the highest version.
+    homes.sort(function (a, b) { return maxOf(b) - maxOf(a); });
+
+    for (var h = 0; h < homes.length; h++) {
+      for (var l = 0; l < homes[h].leaves.length; l++) {
+        if (parseVersionBin(homes[h].leaves[l].name).n === n) {
+          return { home: homes[h].node, existing: homes[h].leaves[l], name: homes[h].leaves[l].name };
+        }
+      }
+    }
+    if (!homes.length) { return { home: platformNode, existing: null, name: versionBinName(n, "x") }; }
+
+    var home = homes[0], v = 0, x = 0;
+    for (var j = 0; j < home.leaves.length; j++) {
+      if (parseVersionBin(home.leaves[j].name).style === "v") { v++; } else { x++; }
+    }
+    return { home: home.node, existing: null, name: versionBinName(n, v > x ? "v" : "x") };
+  }
+
   function clamp01(v) { return v < 0 ? 0 : (v > 1 ? 1 : v); }
 
   return {
@@ -181,7 +277,15 @@ var RSZ = (function () {
     PLATFORM_TARGETS: PLATFORM_TARGETS,
     targetsFor: targetsFor,
     LOGO_NAME_HINTS: LOGO_NAME_HINTS,
-    isLogoName: isLogoName
+    isLogoName: isLogoName,
+    ROOT_BIN_NAMES: ROOT_BIN_NAMES,
+    PLATFORM_BIN_NAMES: PLATFORM_BIN_NAMES,
+    isRootBinName: isRootBinName,
+    isPlatformBinName: isPlatformBinName,
+    versionOf: versionOf,
+    parseVersionBin: parseVersionBin,
+    versionBinName: versionBinName,
+    planVersionBin: planVersionBin
   };
 })();
 

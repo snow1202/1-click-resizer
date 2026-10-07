@@ -7,8 +7,9 @@
 // │ Position property: displayName === "Position" ([x,y] normalized)        │
 // │ Scale property:    displayName === "Scale"    (percent; Uniform Scale on)│
 // │ BIN PLACEMENT: clone() drops the copy at the project ROOT — the panel     │
-// │   walks rootItem for the source's parent bin (by nodeId) and moves the new │
-// │   sequence there via projectItem.moveBin(bin).                             │
+// │   routes it to Timeline/<Platform>/[vN/]<22x|v22> (created when missing,  │
+// │   see RSZ_routeBin) or, failing that, the source's own bin, then moves it │
+// │   via projectItem.moveBin(bin).                                            │
 // │ DUPLICATE_METHOD   = "clone"  // activeSequence.clone() is a function;   │
 // │   qe.duplicate() and createClone() are undefined. clone() does not       │
 // │   return the new sequence → diff app.project.sequences IDs to find it.   │
@@ -236,35 +237,107 @@ function RSZ_isBin(item) {
   try { return item && item.type === 2; } catch (e) { return false; }
 }
 
-// The bin that directly contains `item`, or null when it sits at the project
-// root (or can't be located). Depth-first walk over rootItem's children —
-// matching on nodeId, the same identity the source resolver uses.
-function RSZ_findParentBin(item) {
-  if (!item) { return null; }
+// Bins from the top level down to the one directly holding `item` (root
+// excluded). [] when the item sits at the root or can't be found.
+function RSZ_binPath(item) {
   var targetId;
-  try { targetId = item.nodeId; } catch (e) { return null; }
-  if (!targetId) { return null; }
-
-  function walk(bin) {
+  try { targetId = item.nodeId; } catch (e) { return []; }
+  if (!targetId) { return []; }
+  function walk(bin, trail) {
     var kids;
     try { kids = bin.children; } catch (e) { return null; }
     if (!kids) { return null; }
     for (var i = 0; i < kids.numItems; i++) {
       var child = kids[i];
-      try { if (child.nodeId === targetId) { return bin; } } catch (e1) {}
+      try { if (child.nodeId === targetId) { return trail; } } catch (e1) {}
       if (RSZ_isBin(child)) {
-        var hit = walk(child);
+        var hit = walk(child, trail.concat([child]));
         if (hit) { return hit; }
       }
     }
     return null;
   }
+  return walk(app.project.rootItem, []) || [];
+}
 
-  var root = app.project.rootItem;
-  var found = walk(root);
-  if (!found) { return null; }
-  try { if (found.nodeId === root.nodeId) { return null; } } catch (e2) {}
-  return found;   // a real bin, not the root
+function RSZ_childBins(bin) {
+  var out = [], kids;
+  try { kids = bin.children; } catch (e) { return out; }
+  if (!kids) { return out; }
+  for (var i = 0; i < kids.numItems; i++) { if (RSZ_isBin(kids[i])) { out.push(kids[i]); } }
+  return out;
+}
+
+// Plain {name, item, kids} snapshot of a bin subtree for RSZ.planVersionBin.
+function RSZ_binTree(bin, depth) {
+  var node = { name: String(bin.name), item: bin, kids: [] };
+  if (depth > 0) {
+    var kids = RSZ_childBins(bin);
+    for (var i = 0; i < kids.length; i++) { node.kids.push(RSZ_binTree(kids[i], depth - 1)); }
+  }
+  return node;
+}
+
+// The child bin of `parent` called `name` — created when missing. createBin()
+// is documented to return the new bin, but look it up by name as a fallback.
+function RSZ_ensureChildBin(parent, name) {
+  var kids = RSZ_childBins(parent), i;
+  for (i = 0; i < kids.length; i++) { if (String(kids[i].name) === name) { return kids[i]; } }
+  var made = null;
+  try { made = parent.createBin(name); } catch (e) { return null; }
+  if (made && RSZ_isBin(made)) { return made; }
+  kids = RSZ_childBins(parent);
+  for (i = 0; i < kids.length; i++) { if (String(kids[i].name) === name) { return kids[i]; } }
+  return null;
+}
+
+// Where a variant of `job` belongs:  Timeline/<Platform>/[vN/]<22x | v22>.
+// Returns { bin, path } or null — null means "keep the old behaviour" (the
+// source's own bin): no version in the name, or no Timeline/Sequence bin.
+// `cache` (per run) stops a batch of 22.0/22.1/22.2 from planning — or
+// creating — the same bin three times.
+function RSZ_routeBin(job, platform, cache) {
+  var n = RSZ.versionOf(job.name);
+  if (n === null) { return null; }
+
+  var root = null, i;
+  for (i = 0; i < job.path.length; i++) {                 // nearest ancestor first
+    if (RSZ.isRootBinName(job.path[i].name)) { root = job.path[i]; break; }
+  }
+  if (!root) {
+    var top = RSZ_childBins(app.project.rootItem);
+    for (i = 0; i < top.length; i++) { if (RSZ.isRootBinName(top[i].name)) { root = top[i]; break; } }
+  }
+  if (!root) { return null; }
+
+  var key = String(root.nodeId) + "|" + platform + "|" + n;
+  if (cache[key] !== undefined) { return cache[key]; }
+
+  var plat = null, kids = RSZ_childBins(root);
+  for (i = 0; i < kids.length; i++) { if (RSZ.isPlatformBinName(kids[i].name, platform)) { plat = kids[i]; break; } }
+  var platName = plat ? String(plat.name) : RSZ.PLATFORM_BIN_NAMES[platform][0];
+  if (!plat) { plat = RSZ_ensureChildBin(root, platName); }
+  if (!plat) { cache[key] = null; return null; }
+
+  var plan = RSZ.planVersionBin(RSZ_binTree(plat, 4), n);
+  var bin = plan.existing ? plan.existing.item : RSZ_ensureChildBin(plan.home.item, plan.name);
+  if (!bin) { cache[key] = null; return null; }
+
+  // Readable path for the panel: Timeline/Facebook/v3/22x.
+  var segs = [], hop = RSZ_binPath(bin);
+  for (i = 0; i < hop.length; i++) { segs.push(String(hop[i].name)); }
+  segs.push(String(bin.name));
+  var hit = { bin: bin, path: segs.join("/"), created: !plan.existing };
+  cache[key] = hit;
+  return hit;
+}
+
+// Best effort: make the destination bin the Project panel's current bin so the
+// editor can see where the new sequences went. ProjectItem.select() is the only
+// hook the API offers; whether it also expands the tree depends on the host.
+function RSZ_revealBin(bin) {
+  try { if (bin && typeof bin.select === "function") { bin.select(); return true; } } catch (e) {}
+  return false;
 }
 
 // Move a sequence's ProjectItem into `bin`. No-op (false) when there is no bin
@@ -361,10 +434,11 @@ function RSZ_layoutClips(dup, bgTrack, guideY) {
 }
 
 // Duplicate `sourceSeq`, reframe to `tgtRatio`, rename with the platform tag,
-// move it into `destBin` (the source's own bin; null = leave at root) and lay out
+// move it into `destBin` (its platform/version bin, else the source's own bin;
+// null = leave at root) and lay out
 // its clips. Returns a hand-built JSON result item (ExtendScript has no JSON
 // global). Isolated so one failing target never aborts the batch.
-function RSZ_makeVariant(sourceSeq, baseName, tgtRatio, platform, bgTrack, guideY, destBin) {
+function RSZ_makeVariant(sourceSeq, baseName, tgtRatio, platform, bgTrack, guideY, destBin, destLabel) {
   var tgt = RSZ.RATIOS[tgtRatio];
   var src = ',"src":"' + RSZ_esc(baseName) + '"';   // which selected sequence this came from
   var dup = null; // visible in catch so a stranded duplicate can be reported
@@ -383,7 +457,7 @@ function RSZ_makeVariant(sourceSeq, baseName, tgtRatio, platform, bgTrack, guide
     }
     dup.name = RSZ.buildName(baseName, tgtRatio, platform);
     // clone() drops the copy at the project root — put it beside its source.
-    var binName = RSZ_moveSeqToBin(dup, destBin) ? String(destBin.name) : "";
+    var binName = RSZ_moveSeqToBin(dup, destBin) ? (destLabel || String(destBin.name)) : "";
     var moved = RSZ_layoutClips(dup, bgTrack, guideY);
     return '{"ratio":"' + tgtRatio + '","name":"' + RSZ_esc(dup.name) + '"' + src
          + ',"moved":' + moved
@@ -402,12 +476,13 @@ function RSZ_snapshotJobs(seqs) {
   var jobs = [];
   for (var i = 0; i < seqs.length; i++) {
     var seq = seqs[i];
-    var g, bin = null, nm = "";
+    var g, path = [], nm = "";
     try { g = RSZ_seqGeom(seq); } catch (e) { g = { w: 0, h: 0 }; }
     try { nm = String(seq.name); } catch (e1) {}
-    try { bin = RSZ_findParentBin(seq.projectItem); } catch (e2) {}
+    try { path = RSZ_binPath(seq.projectItem); } catch (e2) {}
     jobs.push({ seq: seq, name: nm, width: g.w, height: g.h,
-                ratio: RSZ.detectRatio(g.w, g.h), bin: bin });
+                ratio: RSZ.detectRatio(g.w, g.h), path: path,
+                bin: path.length ? path[path.length - 1] : null });
   }
   return jobs;
 }
@@ -445,7 +520,7 @@ function RSZ_runResize(platform, wantedCsv, bgTrack, guide9, guide45, guide11, g
   if (!src.seqs.length) { return '{"ok":false,"error":"NO_ACTIVE_SEQUENCE",' + RSZ_sourceDiag() + '}'; }
 
   var jobs = RSZ_snapshotJobs(src.seqs);
-  var parts = [];
+  var parts = [], routeCache = {}, firstDest = null;
   for (var i = 0; i < jobs.length; i++) {
     var j = jobs[i];
     if (needsRatio && !j.ratio) {
@@ -458,12 +533,18 @@ function RSZ_runResize(platform, wantedCsv, bgTrack, guide9, guide45, guide11, g
       parts.push('{"src":"' + RSZ_esc(j.name) + '","error":"NO_TARGET_SELECTED"}');
       continue;
     }
+    // Route to Timeline/<Platform>/<22x>; fall back to the source's own bin.
+    var route = null;
+    try { route = RSZ_routeBin(j, platform, routeCache); } catch (re) { route = null; }
+    var destBin = route ? route.bin : j.bin;
+    if (route && !firstDest) { firstDest = route.bin; }
     for (var t = 0; t < targets.length; t++) {
       parts.push(RSZ_makeVariant(j.seq, j.name, targets[t], platform, bgTrack,
-                                 guideByRatio[targets[t]], j.bin));
+                                 guideByRatio[targets[t]], destBin, route ? route.path : ""));
     }
   }
   RSZ_makeActive(jobs[0].seq);
+  if (firstDest) { RSZ_revealBin(firstDest); }
   return '{"ok":true,"count":' + jobs.length + ',"platform":"' + platform
        + '","from":"' + src.from + '","results":[' + parts.join(",") + '],"error":null}';
 }

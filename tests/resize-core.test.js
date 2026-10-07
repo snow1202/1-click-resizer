@@ -166,3 +166,30 @@ test("describeRatio labels ANY frame size without widening what can be resized",
   assert.strictEqual(RSZ.describeRatio(0, 100), null);
   assert.strictEqual(RSZ.describeRatio(100, 0), null);
 });
+
+test("versionOf reads the major version from team sequence names", () => {
+  assert.strictEqual(RSZ.versionOf("Veracomfort vid 22.0 [c.phuong.mainguyen][tung.thanhnguyen]"), 22);
+  assert.strictEqual(RSZ.versionOf("Brand vid17.1 [a][b]"), 17);
+  assert.strictEqual(RSZ.versionOf("Promo v9.2"), 9);
+  assert.strictEqual(RSZ.versionOf("EvaGlow v16.1"), 16);
+  assert.strictEqual(RSZ.versionOf("Veracomfort master"), null);
+  assert.strictEqual(RSZ.versionOf("Loose master"), null);
+});
+
+test("parseVersionBin knows both naming styles", () => {
+  assert.deepStrictEqual(RSZ.parseVersionBin("22x"), { n: 22, style: "x" });
+  assert.deepStrictEqual(RSZ.parseVersionBin("v22"), { n: 22, style: "v" });
+  assert.strictEqual(RSZ.parseVersionBin("Google"), null);
+});
+
+test("planVersionBin picks the latest vN container and the siblings' style", () => {
+  const b = (name, kids) => ({ name, kids: kids || [] });
+  const fb = b("Facebook", [b("v1", [b("1x")]), b("v2", [b("1x"), b("5x")]), b("v3", [b("1x"), b("23x")])]);
+  const p = RSZ.planVersionBin(fb, 24);
+  assert.strictEqual(p.home.name, "v3");
+  assert.strictEqual(p.name, "24x");
+  assert.strictEqual(p.existing, null);
+  assert.strictEqual(RSZ.planVersionBin(fb, 5).existing.name, "5x");   // reuse wherever it exists
+  assert.strictEqual(RSZ.planVersionBin(b("GG", [b("v20"), b("v21")]), 22).name, "v22");
+  assert.strictEqual(RSZ.planVersionBin(b("Google", []), 3).name, "3x");   // default style
+});
