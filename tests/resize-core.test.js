@@ -131,8 +131,12 @@ test("targetsFor picks a platform's ratios, minus the source, minus unticked", (
   // PIN is a single fixed output, whatever the source
   assert.deepStrictEqual(RSZ.targetsFor("PIN", "9-16"), ["2-3"]);
   assert.deepStrictEqual(RSZ.targetsFor("PIN", null), ["2-3"]);
-  // everything unticked -> nothing to do
-  assert.deepStrictEqual(RSZ.targetsFor("GG", "9-16", ["9-16"]), []);
+  // GG: ticking the source's own ratio asks for a plain copy …
+  assert.deepStrictEqual(RSZ.targetsFor("GG", "9-16", ["9-16"]), ["9-16"]);
+  assert.strictEqual(RSZ.isCopy("GG", "9-16", "9-16"), true);
+  assert.strictEqual(RSZ.isCopy("GG", "9-16", "4-5"), false);
+  // … FB has no such copy, so the same tick there means nothing to do
+  assert.deepStrictEqual(RSZ.targetsFor("FB", "9-16", ["9-16"]), []);
   // an unknown platform never invents work
   assert.deepStrictEqual(RSZ.targetsFor("XX", "9-16"), []);
 });

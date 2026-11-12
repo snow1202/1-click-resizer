@@ -323,8 +323,8 @@ test("a source left with no ticked target is reported, not silently skipped", ()
   const seq = env.makeSeq("Reel", 1080, 1920);
   env.rootChildren.push(seq.projectItem);
   env.select([seq.projectItem]);
-  // only 9:16 ticked, but that IS the source ratio
-  const res = JSON.parse(RSZ_runResize("GG", "9-16", 1, 0.5, 0.5, 0.5, 0.5));
+  // only 9:16 ticked, but that IS the source ratio (FB makes no same-ratio copy)
+  const res = JSON.parse(RSZ_runResize("FB", "9-16", 1, 0.5, 0.5, 0.5, 0.5));
   assert.strictEqual(res.ok, true);
   assert.strictEqual(res.results.length, 1);
   assert.strictEqual(res.results[0].error, "NO_TARGET_SELECTED");
@@ -487,4 +487,33 @@ test("a mixed batch (v22 + v23 in different bins) lands each version in its own 
   assert.strictEqual(RSZ_revealSequence(row.seqId), "ok");
   assert.strictEqual(app.project.activeSequence.name, "Veracomfort vid 23.1 1x1 GG");
   assert.strictEqual(RSZ_revealSequence("nope"), "missing");
+});
+
+test("GG with the source's own ratio ticked makes an untouched copy in the Google bin", () => {
+  const env = setup();
+  teamProject(env, 22);
+  const res = JSON.parse(RSZ_runResize("GG", "9-16,4-5", 1, 0.5, 0.25, 0.5, 0.5));
+  assert.strictEqual(res.results.length, 6);                  // 3 sources × (copy + 4:5)
+  const copies = res.results.filter(r => r.ratio === "9-16");
+  assert.strictEqual(copies.length, 3);
+  copies.forEach(r => {
+    assert.strictEqual(r.copy, true);
+    assert.strictEqual(r.moved, 0);                           // no clip touched
+    assert.ok(/ 9x16 GG$/.test(r.name), r.name);
+    assert.strictEqual(r.bin, "Timeline/Google/22x");
+  });
+  const seq = app.project.sequences;
+  for (let i = 0; i < seq.numSequences; i++) {
+    if (/ 9x16 GG$/.test(seq[i].name)) {
+      assert.deepStrictEqual([seq[i].getSettings().videoFrameWidth, seq[i].getSettings().videoFrameHeight], [1080, 1920]);
+    }
+  }
+  assert.ok(res.results.filter(r => r.ratio === "4-5").every(r => !r.copy && r.moved === 2));
+});
+
+test("blank target list keeps the old GG behaviour (no same-ratio copy)", () => {
+  const env = setup();
+  threeInABin(env);
+  const res = JSON.parse(RSZ_runResizeGG(1, 0.5, 0.5, 0.5));
+  assert.ok(res.results.every(r => !r.copy && r.ratio !== "9-16"));
 });

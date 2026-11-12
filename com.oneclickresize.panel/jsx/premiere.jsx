@@ -470,7 +470,9 @@ function RSZ_layoutClips(dup, bgTrack, guideY) {
 // null = leave at root) and lay out
 // its clips. Returns a hand-built JSON result item (ExtendScript has no JSON
 // global). Isolated so one failing target never aborts the batch.
-function RSZ_makeVariant(sourceSeq, baseName, tgtRatio, platform, bgTrack, guideY, destBin, destLabel) {
+// `copyOnly`: the target IS the source's ratio — duplicate, rename and file it,
+// but leave frame size and every clip exactly as they are.
+function RSZ_makeVariant(sourceSeq, baseName, tgtRatio, platform, bgTrack, guideY, destBin, destLabel, copyOnly) {
   var tgt = RSZ.RATIOS[tgtRatio];
   var src = ',"src":"' + RSZ_esc(baseName) + '"';   // which selected sequence this came from
   var dup = null; // visible in catch so a stranded duplicate can be reported
@@ -482,7 +484,7 @@ function RSZ_makeVariant(sourceSeq, baseName, tgtRatio, platform, bgTrack, guide
     if (!dup) {
       return '{"ratio":"' + tgtRatio + '"' + src + ',"error":"DUPLICATE_FAILED"}';
     }
-    if (!RSZ_setFrameSize(dup, tgt.w, tgt.h)) {
+    if (!copyOnly && !RSZ_setFrameSize(dup, tgt.w, tgt.h)) {
       dup.name = RSZ.buildName(baseName, tgtRatio, platform);
       return '{"ratio":"' + tgtRatio + '"' + src + ',"error":"FRAME_SIZE_FAILED","orphan":"'
            + RSZ_esc(dup.name) + '"}';
@@ -494,9 +496,9 @@ function RSZ_makeVariant(sourceSeq, baseName, tgtRatio, platform, bgTrack, guide
       binName = destLabel || String(destBin.name);
       try { binId = String(destBin.nodeId); } catch (ie) {}
     }
-    var moved = RSZ_layoutClips(dup, bgTrack, guideY);
+    var moved = copyOnly ? 0 : RSZ_layoutClips(dup, bgTrack, guideY);
     return '{"ratio":"' + tgtRatio + '","name":"' + RSZ_esc(dup.name) + '"' + src
-         + ',"moved":' + moved
+         + ',"moved":' + moved + (copyOnly ? ',"copy":true' : '')
          + (binName ? ',"bin":"' + RSZ_esc(binName) + '"' : '')
          + (binId ? ',"binId":"' + RSZ_esc(binId) + '"' : '')
          + ',"seqId":"' + RSZ_esc(String(dup.sequenceID)) + '"}';
@@ -578,7 +580,8 @@ function RSZ_runResize(platform, wantedCsv, bgTrack, guide9, guide45, guide11, g
     if (route && !firstDest) { firstDest = route.bin; }
     for (var t = 0; t < targets.length; t++) {
       parts.push(RSZ_makeVariant(j.seq, j.name, targets[t], platform, bgTrack,
-                                 guideByRatio[targets[t]], destBin, route ? route.path : ""));
+                                 guideByRatio[targets[t]], destBin, route ? route.path : "",
+                                 RSZ.isCopy(platform, j.ratio, targets[t])));
     }
   }
   RSZ_makeActive(jobs[0].seq);

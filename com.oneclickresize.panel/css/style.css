@@ -157,6 +157,7 @@ svg{display:block}
 .tchip.on{color:var(--accent);border-color:var(--accent-line);background:var(--accent-deep)}
 .tchip .tick{opacity:.35;margin-right:5px}
 .tchip.on .tick{opacity:1}
+.tchip .tcopy{margin-left:6px;font-size:9.5px;opacity:.7;letter-spacing:.04em}
 
 /* hover notes (Flex-style): any [data-tip] element floats this bubble */
 .tipbubble{position:fixed;z-index:99;max-width:230px;background:#0A0C0B;border:1px solid var(--line);

@@ -199,7 +199,8 @@
       row.querySelector(".oinfo b").textContent =
         r.name || r.src || (RATIO_DISPLAY[r.ratio] || r.ratio);
       var sub = RATIO_DISPLAY[r.ratio] || r.ratio || "";
-      if (ok && r.moved) { sub += " · đã canh " + r.moved + " lớp"; }
+      if (ok && r.copy) { sub += " · bản sao, không resize"; }
+      else if (ok && r.moved) { sub += " · đã canh " + r.moved + " lớp"; }
       if (ok && r.bin) { sub += " · bin: " + r.bin; }
       if (!ok) {
         sub = r.error === "UNKNOWN_RATIO"
@@ -311,16 +312,22 @@
     return out;
   }
 
-  // Offering "9:16" when the selection IS 9:16 is noise, so that chip is hidden —
-  // but only when EVERY selected sequence shares the ratio. With a mixed
-  // selection each ratio is still a real target for the other sequences.
+  // GG keeps the source's own ratio as a "copy" chip (a plain duplicate filed in
+  // the Google bin). Elsewhere offering "9:16" when the selection IS 9:16 is
+  // noise, so that chip is hidden — but only when EVERY selected sequence shares
+  // the ratio. With a mixed selection each ratio is still a real target.
+  var MODE_COPY_SAME = { GG: true };   // mirrors RSZ.PLATFORM_COPY_SAME
+
+  function isSourceChip(key) {
+    var src = window.RSZ_SRC_RATIOS || [];
+    return src.length === 1 && src[0] === key;
+  }
+
   function visibleTargets(mode) {
     var all = MODE_TARGETS[mode] || [];
-    var src = window.RSZ_SRC_RATIOS || [];
     var out = [];
     for (var i = 0; i < all.length; i++) {
-      var redundant = src.length === 1 && src[0] === all[i];
-      if (!redundant) { out.push(all[i]); }
+      if (!isSourceChip(all[i]) || MODE_COPY_SAME[mode]) { out.push(all[i]); }
     }
     return out;
   }
@@ -342,6 +349,11 @@
         b.type = "button";
         b.className = "tchip" + (on[key] !== false ? " on" : "");
         b.innerHTML = '<span class="tick">✓</span>' + (CHIP_LABEL[key] || key);
+        if (isSourceChip(key)) {
+          b.innerHTML += '<span class="tcopy">bản sao</span>';
+          b.setAttribute("data-tip", "Sequence nguồn đã là " + (CHIP_LABEL[key] || key)
+            + " — tạo 1 bản sao y nguyên (không resize, không dịch text), đặt tên đuôi GG và xếp vào Bin Google.");
+        }
         b.addEventListener("click", function () {
           window.RSZ_RATIOS[key] = (window.RSZ_RATIOS[key] === false);
           savePrefs();

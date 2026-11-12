@@ -2,6 +2,10 @@
 // short lines per version. publish.sh refuses to release a version that has
 // no entry here, so add one BEFORE running it.
 window.RSZ_CHANGELOG = [
+  { v: "1.13.0", date: "2026-11-12", notes: [
+    "GG: tick được cả ratio của sequence nguồn (vd 9:16) để tạo bản sao y nguyên",
+    "Bản sao không resize, chỉ đổi tên đuôi GG và xếp vào Bin Google"
+  ] },
   { v: "1.12.1", date: "2026-10-07", notes: [
     "Bấm vào dòng kết quả: mở đúng sequence vừa tạo (thay vì chọn Bin)"
   ] },

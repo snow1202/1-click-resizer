@@ -26,6 +26,11 @@ var RSZ = (function () {
     "PIN": ["2-3"]                   // Pinterest
   };
 
+  // Platforms where ticking the source's OWN ratio makes a plain copy (no
+  // reframe, no layout) — e.g. GG on a 9:16 source with 9:16 ticked gives a
+  // "… 9x16 GG" sequence filed in the Google bin, saving a manual copy.
+  var PLATFORM_COPY_SAME = { "GG": true };
+
   function contains(arr, v) {
     if (!arr) { return false; }
     for (var i = 0; i < arr.length; i++) { if (arr[i] === v) { return true; } }
@@ -112,17 +117,23 @@ var RSZ = (function () {
 
   // The ratios a run should actually create: the platform's set, minus the
   // source's own ratio, intersected with `wanted` (the ticked boxes). An empty
-  // or missing `wanted` means "everything this platform offers".
+  // or missing `wanted` means "everything this platform offers". The source's
+  // own ratio comes back only when it is explicitly ticked on a copy platform
+  // (isCopy() tells the caller to duplicate it untouched).
   function targetsFor(platform, sourceRatio, wanted) {
     var base = PLATFORM_TARGETS[platform] || [];
     var out = [];
     for (var i = 0; i < base.length; i++) {
       var t = base[i];
-      if (t === sourceRatio) { continue; }
+      if (t === sourceRatio && !(PLATFORM_COPY_SAME[platform] && wanted && contains(wanted, t))) { continue; }
       if (wanted && wanted.length && !contains(wanted, t)) { continue; }
       out.push(t);
     }
     return out;
+  }
+
+  function isCopy(platform, sourceRatio, target) {
+    return !!(PLATFORM_COPY_SAME[platform] && sourceRatio && target === sourceRatio);
   }
 
   // Strip a trailing "<ratio>" or "<ratio> <platform>" label so re-resizing (or
@@ -297,6 +308,8 @@ var RSZ = (function () {
     clamp01: clamp01,
     PLATFORM_TAGS: PLATFORM_TAGS,
     PLATFORM_TARGETS: PLATFORM_TARGETS,
+    PLATFORM_COPY_SAME: PLATFORM_COPY_SAME,
+    isCopy: isCopy,
     targetsFor: targetsFor,
     LOGO_NAME_HINTS: LOGO_NAME_HINTS,
     isLogoName: isLogoName,
