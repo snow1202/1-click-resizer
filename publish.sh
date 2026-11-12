@@ -51,6 +51,20 @@ msg="${*:-release v$new}"
 CHANGELOG="com.oneclickresize.panel/js/changelog.js"
 grep -q "v: \"$new\"" "$CHANGELOG" || { echo "❌ No entry for v$new in $CHANGELOG — add a short one (newest first), then publish."; exit 1; }
 
+# --- Never sweep unrelated work into a PUBLIC release ---------------------------
+# This folder doubles as a general workspace (renders, photos, other projects).
+# `git add -A` below would publish any NEW file, so an untracked path outside the
+# extension's own folders stops the release — even with PUBLISH_YES=1. To ship a
+# genuinely new top-level file, `git add` it by hand first; to keep a local one
+# out for good, list it in .git/info/exclude.
+stray=$(git ls-files --others --exclude-standard | grep -vE '^(com\.oneclickresize\.panel|tests|media)/' || true)
+if [ -n "$stray" ]; then
+  echo "❌ Untracked files outside the extension — refusing to publish them to a public repo:"
+  printf '%s\n' "$stray" | sed 's/^/   /' | head -20
+  echo "   Add them to .git/info/exclude (local-only) or 'git add' them deliberately, then publish."
+  exit 1
+fi
+
 # --- Show what will ship, confirm ----------------------------------------------
 echo "Publishing v$cur -> v$new …"
 if [ -n "$(git status --porcelain)" ]; then
