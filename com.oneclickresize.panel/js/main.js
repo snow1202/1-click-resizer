@@ -5,7 +5,7 @@
 
   // Pure display formatting only — the ratio itself is decided by ExtendScript's
   // detectRatio and arrives on info.ratio. No ratio classification lives here.
-  var RATIO_DISPLAY = { "9-16": "9 : 16", "4-5": "4 : 5", "1-1": "1 : 1", "2-3": "2 : 3" };
+  var RATIO_DISPLAY = { "9-16": "9 : 16", "4-5": "4 : 5", "1-1": "1 : 1", "2-3": "2 : 3", "16-9": "16 : 9" };
 
   function setStatus(message) {
     var el = document.getElementById("status-msg");
@@ -182,7 +182,7 @@
     outs.innerHTML = "";
     if (!payload.ok) {
       outs.innerHTML = '<p class="hint">' +
-        (payload.error === "UNKNOWN_RATIO" ? "ratio nguồn không nằm trong 9:16 / 4:5 / 1:1"
+        (payload.error === "UNKNOWN_RATIO" ? "ratio nguồn không nằm trong 9:16 / 4:5 / 1:1 / 16:9"
          : payload.error === "NO_ACTIVE_SEQUENCE" ? "chưa chọn hoặc mở sequence nào"
          : "có lỗi xảy ra") + "</p>";
       return;
@@ -204,7 +204,11 @@
       if (ok && r.bin) { sub += " · bin: " + r.bin; }
       if (!ok) {
         sub = r.error === "UNKNOWN_RATIO"
-          ? "bỏ qua — ratio nguồn không nằm trong 9:16 / 4:5 / 1:1"
+          ? "bỏ qua — ratio nguồn không nằm trong 9:16 / 4:5 / 1:1 / 16:9"
+          : r.error === "SOURCE_LIMIT"
+          ? "bỏ qua — nguồn " + (CHIP_LABEL[r.ratio] || r.ratio) + " chỉ resize được sang "
+            + String(r.allowed || "").split(",").map(function (k) { return CHIP_LABEL[k] || k; }).join(" / ")
+            + " (chế độ GG)"
           : r.error === "NO_TARGET_SELECTED"
           ? "bỏ qua — không còn size nào được tick cho nguồn này"
           : "không tạo được";
@@ -297,7 +301,7 @@
     FB: "Facebook · 9:16 / 4:5",
     PIN: "Pinterest · 2:3"
   };
-  var CHIP_LABEL = { "9-16": "9:16", "4-5": "4:5", "1-1": "1:1", "2-3": "2:3" };
+  var CHIP_LABEL = { "9-16": "9:16", "4-5": "4:5", "1-1": "1:1", "2-3": "2:3", "16-9": "16:9" };
 
   // The ratios the user left ticked for this mode. PIN has a single fixed output,
   // so it ignores the chips entirely. Hidden ratios stay in the list on purpose:
@@ -323,10 +327,27 @@
     return src.length === 1 && src[0] === key;
   }
 
+  // Sources that may only become some targets (mirrors RSZ.SOURCE_LIMITS):
+  // 16:9 only makes 1:1. When EVERY selected sequence is such a source, the
+  // other chips are hidden — they would only produce a "bỏ qua" row.
+  var SOURCE_LIMITS = { "16-9": ["1-1"] };
+
+  function limitAllows(key) {
+    var src = window.RSZ_SRC_RATIOS || [];
+    if (!src.length) { return true; }
+    for (var i = 0; i < src.length; i++) {
+      var lim = SOURCE_LIMITS[src[i]];
+      if (!lim) { return true; }                 // a normal source: no limit
+      for (var j = 0; j < lim.length; j++) { if (lim[j] === key) { return true; } }
+    }
+    return false;
+  }
+
   function visibleTargets(mode) {
     var all = MODE_TARGETS[mode] || [];
     var out = [];
     for (var i = 0; i < all.length; i++) {
+      if (!limitAllows(all[i])) { continue; }
       if (!isSourceChip(all[i]) || MODE_COPY_SAME[mode]) { out.push(all[i]); }
     }
     return out;

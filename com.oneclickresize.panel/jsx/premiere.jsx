@@ -569,6 +569,12 @@ function RSZ_runResize(platform, wantedCsv, bgTrack, guide9, guide45, guide11, g
       continue;
     }
     var targets = RSZ.targetsFor(platform, j.ratio, wanted);
+    if (!targets.length && RSZ.SOURCE_LIMITS[j.ratio] && !RSZ.targetsFor(platform, j.ratio, null).length) {
+      // e.g. a 16:9 source on FB: this mode has nothing it may become.
+      parts.push('{"src":"' + RSZ_esc(j.name) + '","ratio":"' + j.ratio + '","error":"SOURCE_LIMIT","allowed":"'
+               + RSZ.SOURCE_LIMITS[j.ratio].join(",") + '"}');
+      continue;
+    }
     if (!targets.length) {
       parts.push('{"src":"' + RSZ_esc(j.name) + '","error":"NO_TARGET_SELECTED"}');
       continue;

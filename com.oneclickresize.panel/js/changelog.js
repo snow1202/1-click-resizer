@@ -2,6 +2,10 @@
 // short lines per version. publish.sh refuses to release a version that has
 // no entry here, so add one BEFORE running it.
 window.RSZ_CHANGELOG = [
+  { v: "1.14.0", date: "2026-11-26", notes: [
+    "GG: nhận nguồn 16:9, resize sang 1:1 (giữ scale nền, text canh guide 1:1)",
+    "Nguồn 16:9 chỉ hiện ô 1:1; đổi đuôi 16x9 thành 1x1 GG"
+  ] },
   { v: "1.13.0", date: "2026-11-12", notes: [
     "GG: tick được cả ratio của sequence nguồn (vd 9:16) để tạo bản sao y nguyên",
     "Bản sao không resize, chỉ đổi tên đuôi GG và xếp vào Bin Google"

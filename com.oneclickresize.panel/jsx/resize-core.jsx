@@ -4,17 +4,24 @@ var RSZ = (function () {
     "9-16": { w: 1080, h: 1920 },
     "4-5":  { w: 1080, h: 1350 },
     "1-1":  { w: 1080, h: 1080 },
-    "2-3":  { w: 1080, h: 1620 }   // Pinterest (PIN) target only
+    "2-3":  { w: 1080, h: 1620 },  // Pinterest (PIN) target only
+    "16-9": { w: 1920, h: 1080 }   // landscape SOURCE only (-> 1:1), never a target
   };
   // The GG cross-resize set (a source in here produces the other two). 2-3 is
   // deliberately NOT in ORDER: it's a PIN-only target and must never be a GG
   // source or be picked by detectRatio.
   var ORDER = ["9-16", "4-5", "1-1"];
+  // Every ratio detectRatio may report as a SOURCE: the GG set plus 16:9.
+  var SOURCE_RATIOS = ["9-16", "4-5", "1-1", "16-9"];
+  // Sources that can only become some of the targets. 16:9 footage at its own
+  // scale fills a 1:1 frame (same 1080 height, sides cropped) but would leave
+  // bars in a taller 4:5 / 9:16 frame, so it only ever produces 1:1.
+  var SOURCE_LIMITS = { "16-9": ["1-1"] };
   // Internal ratio keys stay "9-16"; the name suffix uses the "x" style.
-  var LABELS = { "9-16": "9x16", "4-5": "4x5", "1-1": "1x1", "2-3": "2x3" };
+  var LABELS = { "9-16": "9x16", "4-5": "4x5", "1-1": "1x1", "2-3": "2x3", "16-9": "16x9" };
   // Every trailing ratio label we recognise when stripping (new + legacy dash
   // form), so re-resizing a file named either way swaps cleanly.
-  var STRIP_SUFFIXES = ["9x16", "4x5", "1x1", "2x3", "9-16", "4-5", "1-1", "2-3"];
+  var STRIP_SUFFIXES = ["9x16", "4x5", "1x1", "2x3", "16x9", "9-16", "4-5", "1-1", "2-3", "16-9"];
   // Platform tags appended after the ratio label, e.g. "... 4x5 GG".
   var PLATFORM_TAGS = ["GG", "FB", "PIN"];
   // Which ratios each button may produce. The source's own ratio is always
@@ -44,10 +51,10 @@ var RSZ = (function () {
     var a = aspectOf(w, h);
     var best = null;
     var bestDiff = EPS;
-    for (var i = 0; i < ORDER.length; i++) {
-      var r = RATIOS[ORDER[i]];
+    for (var i = 0; i < SOURCE_RATIOS.length; i++) {
+      var r = RATIOS[SOURCE_RATIOS[i]];
       var diff = Math.abs(aspectOf(r.w, r.h) - a);
-      if (diff <= bestDiff) { bestDiff = diff; best = ORDER[i]; }
+      if (diff <= bestDiff) { bestDiff = diff; best = SOURCE_RATIOS[i]; }
     }
     return best;
   }
@@ -122,9 +129,12 @@ var RSZ = (function () {
   // (isCopy() tells the caller to duplicate it untouched).
   function targetsFor(platform, sourceRatio, wanted) {
     var base = PLATFORM_TARGETS[platform] || [];
+    var limit = SOURCE_LIMITS[sourceRatio];
     var out = [];
     for (var i = 0; i < base.length; i++) {
       var t = base[i];
+      // Limits cover the 9:16/4:5/1:1 family only — PIN's 2:3 takes any source.
+      if (limit && contains(ORDER, t) && !contains(limit, t)) { continue; }
       if (t === sourceRatio && !(PLATFORM_COPY_SAME[platform] && wanted && contains(wanted, t))) { continue; }
       if (wanted && wanted.length && !contains(wanted, t)) { continue; }
       out.push(t);
@@ -309,6 +319,8 @@ var RSZ = (function () {
     PLATFORM_TAGS: PLATFORM_TAGS,
     PLATFORM_TARGETS: PLATFORM_TARGETS,
     PLATFORM_COPY_SAME: PLATFORM_COPY_SAME,
+    SOURCE_RATIOS: SOURCE_RATIOS,
+    SOURCE_LIMITS: SOURCE_LIMITS,
     isCopy: isCopy,
     targetsFor: targetsFor,
     LOGO_NAME_HINTS: LOGO_NAME_HINTS,

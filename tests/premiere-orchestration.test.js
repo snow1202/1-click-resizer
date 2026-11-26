@@ -209,7 +209,7 @@ test("PIN gives exactly one 2:3 sequence per selected source", () => {
 test("an odd-ratio source is skipped per-sequence, never aborting the batch", () => {
   const env = setup();
   const good = env.makeSeq("Good 9x16", 1080, 1920);
-  const odd = env.makeSeq("Weird 16x9 master", 1920, 1080);
+  const odd = env.makeSeq("Weird scope master", 2048, 858);     // 2.39:1
   env.rootChildren.push(good.projectItem, odd.projectItem);
   env.select([good.projectItem, odd.projectItem]);
   const res = JSON.parse(RSZ_runResizeGG(1, 0.5, 0.5, 0.5));
@@ -217,7 +217,7 @@ test("an odd-ratio source is skipped per-sequence, never aborting the batch", ()
   assert.strictEqual(res.results.length, 3);          // 2 variants + 1 skip
   const skipped = res.results.filter(r => r.error === "UNKNOWN_RATIO");
   assert.strictEqual(skipped.length, 1);
-  assert.strictEqual(skipped[0].src, "Weird 16x9 master");
+  assert.strictEqual(skipped[0].src, "Weird scope master");
 });
 
 test("PIN accepts any source ratio", () => {
@@ -516,4 +516,55 @@ test("blank target list keeps the old GG behaviour (no same-ratio copy)", () => 
   threeInABin(env);
   const res = JSON.parse(RSZ_runResizeGG(1, 0.5, 0.5, 0.5));
   assert.ok(res.results.every(r => !r.copy && r.ratio !== "9-16"));
+});
+
+// A 16:9 GG source filed like the real Daisy Bra project: Timeline/Google/v84.
+function landscapeProject(env) {
+  const seq = env.makeSeq("DaisyBra v84.0 [c.phuong.mainguyen][tung.thanhnguyen] 16x9 GG", 1920, 1080);
+  const v84 = env.makeBin("v84", [seq.projectItem]);
+  const gg = env.makeBin("Google", [v84, env.makeBin("v85"), env.makeBin("v88")]);
+  env.rootChildren.push(env.makeBin("Timeline", [env.makeBin("Facebook"), gg]));
+  env.select([seq.projectItem]);
+  return seq;
+}
+
+test("GG on a 16:9 source makes one 1:1 in the same Google version bin", () => {
+  const env = setup();
+  landscapeProject(env);
+  const info = JSON.parse(RSZ_activeSequenceInfo());
+  assert.strictEqual(info.ratio, "16-9");
+  assert.deepStrictEqual(info.ratios, ["16-9"]);
+  // the panel still sends every ticked chip; only 1:1 may come out
+  const res = JSON.parse(RSZ_runResize("GG", "9-16,4-5,1-1", 1, 0.5, 0.5, 0.3, 0.5));
+  assert.strictEqual(res.results.length, 1, JSON.stringify(res.results));
+  const r = res.results[0];
+  assert.strictEqual(r.ratio, "1-1");
+  assert.strictEqual(r.name, "DaisyBra v84.0 [c.phuong.mainguyen][tung.thanhnguyen] 1x1 GG");
+  assert.strictEqual(r.bin, "Timeline/Google/v84");
+  assert.strictEqual(r.moved, 2);                     // text + MOGRT to the 1:1 guide, logo left
+  assert.deepStrictEqual(env.created, []);            // v84 already existed
+  const seqs = app.project.sequences;
+  for (let i = 0; i < seqs.numSequences; i++) {
+    if (seqs[i].name === r.name) {
+      const st = seqs[i].getSettings();
+      assert.deepStrictEqual([st.videoFrameWidth, st.videoFrameHeight], [1080, 1080]);
+    }
+  }
+});
+
+test("GG on a 16:9 source with 1:1 unticked reports nothing to do", () => {
+  const env = setup();
+  landscapeProject(env);
+  const res = JSON.parse(RSZ_runResize("GG", "9-16,4-5", 1, 0.5, 0.5, 0.5, 0.5));
+  assert.strictEqual(res.results.length, 1);
+  assert.strictEqual(res.results[0].error, "NO_TARGET_SELECTED");
+});
+
+test("FB on a 16:9 source explains it only resizes to 1:1", () => {
+  const env = setup();
+  landscapeProject(env);
+  const res = JSON.parse(RSZ_runResize("FB", "9-16,4-5", 1, 0.5, 0.5, 0.5, 0.5));
+  assert.strictEqual(res.results.length, 1);
+  assert.strictEqual(res.results[0].error, "SOURCE_LIMIT");
+  assert.strictEqual(res.results[0].allowed, "1-1");
 });

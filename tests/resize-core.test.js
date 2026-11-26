@@ -10,7 +10,24 @@ test("detectRatio matches the three standard 1080 sizes", () => {
 
 test("detectRatio matches by aspect ratio at other resolutions", () => {
   assert.strictEqual(RSZ.detectRatio(2160, 3840), "9-16");
-  assert.strictEqual(RSZ.detectRatio(1920, 1080), null); // 16:9 is not in our set
+  assert.strictEqual(RSZ.detectRatio(2560, 1080), null); // 21:9 is not a source
+});
+
+test("16:9 is a source that only becomes 1:1", () => {
+  assert.strictEqual(RSZ.detectRatio(1920, 1080), "16-9");
+  assert.strictEqual(RSZ.detectRatio(3840, 2160), "16-9");
+  assert.deepStrictEqual(RSZ.ORDER, ["9-16", "4-5", "1-1"]);      // still not a GG target
+  assert.deepStrictEqual(RSZ.targetsFor("GG", "16-9"), ["1-1"]);
+  assert.deepStrictEqual(RSZ.targetsFor("GG", "16-9", ["9-16", "4-5", "1-1"]), ["1-1"]);
+  assert.deepStrictEqual(RSZ.targetsFor("GG", "16-9", ["9-16", "4-5"]), []);
+  assert.deepStrictEqual(RSZ.targetsFor("FB", "16-9"), []);
+  assert.deepStrictEqual(RSZ.targetsFor("PIN", "16-9"), ["2-3"]); // PIN still takes any source
+  assert.strictEqual(RSZ.isCopy("GG", "16-9", "1-1"), false);
+  // the 16x9 label is swapped, not stacked
+  var base = "DaisyBra v84.0 [c.phuong.mainguyen][tung.thanhnguyen]";
+  assert.strictEqual(RSZ.buildName(base + " 16x9 GG", "1-1", "GG"), base + " 1x1 GG");
+  assert.strictEqual(RSZ.buildName(base + " 16x9", "1-1", "GG"), base + " 1x1 GG");
+  assert.strictEqual(RSZ.describeRatio(1920, 1080), "16 : 9");
 });
 
 test("detectRatio returns null on bad input", () => {
